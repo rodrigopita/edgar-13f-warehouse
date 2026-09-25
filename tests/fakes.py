@@ -35,18 +35,25 @@ class FakeResponse:
 
 
 class FakeSession:
-    """Returns scripted responses in order and records every URL requested."""
+    """Returns scripted responses in order and records every URL requested.
+
+    A queued exception is raised instead of returned, which is how a test
+    scripts a connection error or a timeout.
+    """
 
     def __init__(self) -> None:
         self.headers: dict[str, str] = {}
         self.calls: list[str] = []
-        self._responses: list[FakeResponse] = []
+        self._responses: list[FakeResponse | Exception] = []
 
-    def queue(self, *responses: FakeResponse) -> None:
+    def queue(self, *responses: FakeResponse | Exception) -> None:
         self._responses.extend(responses)
 
     def get(self, url: str, timeout: tuple[float, float] | None = None) -> FakeResponse:
         self.calls.append(url)
         if not self._responses:
             raise AssertionError(f"unexpected request, nothing queued: {url}")
-        return self._responses.pop(0)
+        item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item

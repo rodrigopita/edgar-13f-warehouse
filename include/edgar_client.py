@@ -9,6 +9,13 @@ import time
 from collections.abc import Callable
 
 import requests
+from tenacity import (
+    Retrying,
+    before_sleep_log,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 BASE_URL = "https://www.sec.gov"
 # The SEC's published maximum is 10 requests per second. The ceiling stays below it.
@@ -16,6 +23,12 @@ DEFAULT_MAX_RPS = 8
 USER_AGENT_TEMPLATE = "edgar-13f-warehouse {contact}"
 # Seconds to connect, seconds to wait for the first byte.
 REQUEST_TIMEOUT = (5, 30)
+# Five attempts with waits of 1, 2, 4 and 8 seconds between them. sec.gov lifts a
+# rate block once the caller stays under the limit for ten minutes, so the last
+# wait is long enough to matter and short enough for a task to finish.
+RETRY_ATTEMPTS = 5
+RETRY_WAIT_MIN = 1.0
+RETRY_WAIT_MAX = 30.0
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +46,7 @@ class EdgarError(Exception):
 
 
 class EdgarRetryableError(EdgarError):
-    """429 or 5xx: the same request may succeed after a wait."""
+    """429 or 5xx or a transport failure: the same request may succeed after a wait."""
 
 
 class EdgarPermanentError(EdgarError):
@@ -102,3 +115,43 @@ class EdgarClient:
         self._sleep = sleeper
         self.requests_made = 0
         self.started_at = clock()
+        # The same injected sleeper serves the limiter and the backoff, so a test
+        # that fakes one fakes both. reraise=True surfaces the last EdgarRetryableError
+        # instead of tenacity's own RetryError.
+        self._retrying = Retrying(
+            retry=retry_if_exception_type(EdgarRetryableError),
+            wait=wait_exponential(multiplier=1, min=RETRY_WAIT_MIN, max=RETRY_WAIT_MAX),
+            stop=stop_after_attempt(RETRY_ATTEMPTS),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+            sleep=sleeper,
+        )
+
+    def get(self, url: str) -> bytes:
+        """Fetch a URL, or a path under sec.gov, with the retry policy applied.
+
+        Raises EdgarRetryableError after the last failed attempt and
+        EdgarPermanentError at once, without a retry.
+        """
+        return self._retrying(self._fetch, self._absolute(url))
+
+    def _fetch(self, url: str) -> bytes:
+        """One attempt: wait for the limiter, request, map the status to a result."""
+        self._limiter.wait()
+        self.requests_made += 1
+        try:
+            response = self.session.get(url, timeout=REQUEST_TIMEOUT)
+        except requests.RequestException as exc:
+            raise EdgarRetryableError(0, url, f"{type(exc).__name__} for {url}") from exc
+        status = response.status_code
+        if status == 200:
+            return response.content
+        if status == 429 or 500 <= status < 600:
+            raise EdgarRetryableError(status, url)
+        raise EdgarPermanentError(status, url)
+
+    @staticmethod
+    def _absolute(url: str) -> str:
+        if url.startswith(("https://", "http://")):
+            return url
+        return f"{BASE_URL}/{url.lstrip('/')}"
