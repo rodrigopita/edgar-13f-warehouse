@@ -29,3 +29,5 @@ extend-exclude = [".astro"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: taks to sec.gov; deselected by default, run with -m live"]
