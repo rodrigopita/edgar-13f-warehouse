@@ -10,8 +10,8 @@ from collections.abc import Callable
 
 import requests
 from tenacity import (
+    RetryCallState,
     Retrying,
-    before_sleep_log,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -29,6 +29,8 @@ REQUEST_TIMEOUT = (5, 30)
 RETRY_ATTEMPTS = 5
 RETRY_WAIT_MIN = 1.0
 RETRY_WAIT_MAX = 30.0
+# One rate line in the task log per this many requests.
+LOG_EVERY = 100
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class EdgarError(Exception):
 
 
 class EdgarRetryableError(EdgarError):
-    """429 or 5xx or a transport failure: the same request may succeed after a wait."""
+    """429, 5xx, or a transport failure: the same request may succeed after a wait."""
 
 
 class EdgarPermanentError(EdgarError):
@@ -114,6 +116,7 @@ class EdgarClient:
         self._clock = clock
         self._sleep = sleeper
         self.requests_made = 0
+        self.retries = 0
         self.started_at = clock()
         # The same injected sleeper serves the limiter and the backoff, so a test
         # that fakes one fakes both. reraise=True surfaces the last EdgarRetryableError
@@ -122,7 +125,7 @@ class EdgarClient:
             retry=retry_if_exception_type(EdgarRetryableError),
             wait=wait_exponential(multiplier=1, min=RETRY_WAIT_MIN, max=RETRY_WAIT_MAX),
             stop=stop_after_attempt(RETRY_ATTEMPTS),
-            before_sleep=before_sleep_log(logger, logging.WARNING),
+            before_sleep=self._note_retry,
             reraise=True,
             sleep=sleeper,
         )
@@ -135,10 +138,26 @@ class EdgarClient:
         """
         return self._retrying(self._fetch, self._absolute(url))
 
+    def stats(self) -> dict[str, float | int]:
+        """Counters since construction, for the task log and the audit table.
+
+        requests_per_second is the observed average, attempts included, so the
+        README can quote the rate the walker held against the SEC's limit.
+        """
+        elapsed = self._clock() - self.started_at
+        return {
+            "requests_made": self.requests_made,
+            "retries": self.retries,
+            "elapsed_seconds": elapsed,
+            "requests_per_second": self.requests_made / elapsed if elapsed > 0 else 0.0,
+        }
+
     def _fetch(self, url: str) -> bytes:
         """One attempt: wait for the limiter, request, map the status to a result."""
         self._limiter.wait()
         self.requests_made += 1
+        if self.requests_made % LOG_EVERY == 0:
+            self._log_rate()
         try:
             response = self.session.get(url, timeout=REQUEST_TIMEOUT)
         except requests.RequestException as exc:
@@ -149,6 +168,29 @@ class EdgarClient:
         if status == 429 or 500 <= status < 600:
             raise EdgarRetryableError(status, url)
         raise EdgarPermanentError(status, url)
+
+    def _note_retry(self, retry_state: RetryCallState) -> None:
+        """tenacity hook, called before each backoff sleep."""
+        self.retries += 1
+        outcome = retry_state.outcome
+        error = outcome.exception() if outcome is not None else None
+        wait = retry_state.next_action.sleep if retry_state.next_action is not None else 0.0
+        logger.warning(
+            "edgar attempt %d failed (%s), retrying in %.0f s",
+            retry_state.attempt_number,
+            error,
+            wait,
+        )
+
+    def _log_rate(self) -> None:
+        s = self.stats()
+        logger.info(
+            "edgar rate: %d requests, %d retries, %.1f s elapsed, %.2f req/s",
+            s["requests_made"],
+            s["retries"],
+            s["elapsed_seconds"],
+            s["requests_per_second"],
+        )
 
     @staticmethod
     def _absolute(url: str) -> str:
