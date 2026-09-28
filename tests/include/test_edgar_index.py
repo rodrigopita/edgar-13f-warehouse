@@ -1,16 +1,23 @@
+import json
 from collections import Counter
 from datetime import date
 from pathlib import Path
 
 import pytest
 
+from include.edgar_client import EdgarClient
 from include.edgar_index import (
     FORM_TYPES_13F,
     Form13F,
     IndexEntry,
+    IndexNotPublished,
     IndexParseError,
+    fetch_daily_index,
+    list_index_days,
     parse_form_index,
+    quarter_path,
 )
+from tests.fakes import FakeResponse
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "edgar"
 
@@ -191,3 +198,104 @@ class TestMalformed:
 
         with pytest.raises(IndexParseError):
             parse_form_index(text)
+
+
+ROOT = "/Archives/edgar/daily-index"
+QTR3 = "https://www.sec.gov/Archives/edgar/daily-index/2026/QTR3"
+
+
+@pytest.fixture(scope="module")
+def quarter_listing() -> bytes:
+    return (FIXTURES / "QTR3-index.json").read_bytes()
+
+
+@pytest.fixture
+def client(session, clock, sleeper) -> EdgarClient:
+    return EdgarClient("someone@example.com", session=session, clock=clock, sleeper=sleeper)
+
+
+class TestQuarterPath:
+    @pytest.mark.parametrize(
+        ("day", "expected"),
+        [
+            pytest.param(date(2026, 1, 1), f"{ROOT}/2026/QTR1", id="first-day-of-year"),
+            pytest.param(date(2026, 3, 31), f"{ROOT}/2026/QTR1", id="last-day-of-q1"),
+            pytest.param(date(2026, 4, 1), f"{ROOT}/2026/QTR2", id="first-day-of-q2"),
+            pytest.param(date(2026, 9, 22), f"{ROOT}/2026/QTR3", id="fixture-day"),
+            pytest.param(date(2026, 12, 31), f"{ROOT}/2026/QTR4", id="last-day-of-year"),
+        ],
+    )
+    def test_maps_a_day_to_its_quarter_folder(self, day, expected):
+        assert quarter_path(day) == expected
+
+
+class TestListIndexDays:
+    def test_reads_the_form_files_from_the_real_listing(self, client, session, quarter_listing):
+        session.queue(FakeResponse(200, quarter_listing))
+
+        days = list_index_days(client, date(2026, 9, 22))
+
+        assert session.calls == [f"{QTR3}/index.json"]
+        assert len(days) == 61
+        assert days == sorted(days)
+        assert days[0] == date(2026, 7, 1)
+        assert date(2026, 9, 22) in days
+        assert date(2026, 9, 20) not in days  # a Saturday
+
+    def test_ignores_the_other_index_families(self, client, session):
+        listing = {
+            "directory": {
+                "item": [
+                    {"name": "company.20260922.idx"},
+                    {"name": "master.20260922.idx"},
+                    {"name": "form.20260922.idx"},
+                    {"name": "sitemap.20260922.xml"},
+                ]
+            }
+        }
+        session.queue(FakeResponse(200, json.dumps(listing).encode()))
+
+        assert list_index_days(client, date(2026, 9, 22)) == [date(2026, 9, 22)]
+
+    def test_a_listing_that_is_not_json_is_a_parse_error(self, client, session):
+        session.queue(FakeResponse(200, b"<html>not a listing</html>"))
+
+        with pytest.raises(IndexParseError, match="quarter listing"):
+            list_index_days(client, date(2026, 9, 22))
+
+    def test_a_listing_without_the_directory_key_is_a_parse_error(self, client, session):
+        session.queue(FakeResponse(200, b'{"something": "else"}'))
+
+        with pytest.raises(IndexParseError, match="quarter listing"):
+            list_index_days(client, date(2026, 9, 22))
+
+
+class TestFetchDailyIndex:
+    def test_lists_then_fetches_the_listed_file(self, client, session, quarter_listing, real_index):
+        session.queue(FakeResponse(200, quarter_listing), FakeResponse(200, real_index))
+
+        data = fetch_daily_index(client, date(2026, 9, 22))
+
+        assert session.calls == [f"{QTR3}/index.json", f"{QTR3}/form.20260922.idx"]
+        assert data == real_index
+        assert len(parse_form_index(data)) == 20
+
+    def test_a_day_without_a_file_is_not_published(self, client, session, quarter_listing):
+        session.queue(FakeResponse(200, quarter_listing))
+
+        with pytest.raises(IndexNotPublished) as excinfo:
+            fetch_daily_index(client, date(2026, 9, 20))
+
+        assert excinfo.value.day == date(2026, 9, 20)
+        assert "2026-09-20" in str(excinfo.value)
+        assert session.calls == [f"{QTR3}/index.json"]
+
+    def test_a_day_in_another_quarter_lists_that_quarter(self, client, session):
+        session.queue(FakeResponse(200, b'{"directory": {"item": []}}'))
+
+        with pytest.raises(IndexNotPublished):
+            fetch_daily_index(client, date(2026, 2, 17))
+
+        assert session.calls == [
+            "https://www.sec.gov/Archives/edgar/daily-index/2026/QTR1/index.json"
+        ]

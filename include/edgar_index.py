@@ -1,15 +1,22 @@
 """EDGAR daily index files: what was filed on a day, by form type.
 
 A daily index (`form.YYYYMMDD.idx`) is a plain-text report: a few header lines,
-a column header, a dashed separator, then one row per filing. The parser here
-is pure. Fetching and listing live in the same module in a later step; the DAG
-stores the raw file before calling the parser.
+a column header, a dashed separator, then one row per filing. The parser is
+pure. The two fetching functions never guess a file name: they read the
+quarter's listing first, so a 403 on a listed file is a real failure and a day
+with no file is IndexNotPublished. The DAG stores the raw file before parsing.
 """
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
+
+from include.edgar_client import EdgarClient
+
+DAILY_INDEX_ROOT = "/Archives/edgar/daily-index"
+_FORM_FILE = re.compile(r"^form\.(\d{8})\.idx$")
 
 
 class Form13F(StrEnum):
@@ -38,7 +45,15 @@ _ACCESSION = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 
 
 class IndexParseError(ValueError):
-    """A daily index row or header did not have the expected shape."""
+    """A daily index row, header or listing did not have the expected shape."""
+
+
+class IndexNotPublished(Exception):
+    """No form index exists for the day: a weekend, a holiday, or not posted yet."""
+
+    def __init__(self, day: date) -> None:
+        self.day = day
+        super().__init__(f"no daily form index for {day.isoformat()}")
 
 
 @dataclass(frozen=True)
@@ -115,3 +130,35 @@ def _accession_from_path(path: str, line_no: int) -> str:
     if not _ACCESSION.match(stem):
         raise IndexParseError(f"line {line_no}: file name {path!r} carries no accession number")
     return stem
+
+
+def quarter_path(day: date) -> str:
+    """Folder of the daily indexes for the quarter containing `day`."""
+    quarter = (day.month - 1) // 3 + 1
+    return f"{DAILY_INDEX_ROOT}/{day.year}/QTR{quarter}"
+
+
+def list_index_days(client: EdgarClient, day: date) -> list[date]:
+    """Days in `day`'s quarter that have a form index, from the folder's index.json."""
+    listing = client.get(f"{quarter_path(day)}/index.json")
+    try:
+        items = json.loads(listing)["directory"]["item"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise IndexParseError("quarter listing is not the expected index.json shape") from exc
+    days = []
+    for item in items:
+        found = _FORM_FILE.match(item.get("name", ""))
+        if found:
+            days.append(date.fromisoformat(found.group(1)))
+    return sorted(days)
+
+
+def fetch_daily_index(client: EdgarClient, day: date) -> bytes:
+    """Raw bytes of `form.YYYYMMDD.idx` for `day`, or IndexNotPublished.
+
+    Two requests: the quarter listing, then the file. The listing is what tells
+    a missing day apart from a refused request, since sec.gov answers 403 to both.
+    """
+    if day not in list_index_days(client, day):
+        raise IndexNotPublished(day)
+    return client.get(f"{quarter_path(day)}/form.{day:%Y%m%d}.idx")
