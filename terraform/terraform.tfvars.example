@@ -1,0 +1,4 @@
+bucket_name = "edgar-13f-warehouse-landing-<your-suffix>"
+owner       = "<your-name>"
+# region      = "us-east-1"
+# environment = "prod"
