@@ -8,6 +8,8 @@ version. The module imports nothing from Airflow; the DAG hands it a boto3
 client built from the Airflow connection.
 """
 
+import json
+import re
 from dataclasses import dataclass
 from datetime import date
 
@@ -18,6 +20,7 @@ from include.edgar_filing import FilingBytes
 
 INDEX_PREFIX = "raw/edgar/index"
 FILINGS_PREFIX = "raw/edgar/filings"
+AUDIT_PREFIX = "raw/edgar/audit/walk"
 PRIMARY_DOC_NAME = "primary_doc.xml"
 # The filer chooses the information table's file name. It is stored under one
 # fixed name, and the original is kept as object metadata.
@@ -38,6 +41,12 @@ def primary_doc_key(filed: date, accession: str) -> str:
 
 def info_table_key(filed: date, accession: str) -> str:
     return filing_prefix(filed, accession) + INFO_TABLE_NAME
+
+
+def audit_key(day: date, run_id: str) -> str:
+    """One audit record per DAG run, under the day the run was for."""
+    safe_run_id = re.sub(r"[^A-Za-z0-9_.-]", "-", run_id)
+    return f"{AUDIT_PREFIX}/day={day.isoformat()}/{safe_run_id}.json"
 
 
 @dataclass(frozen=True)
@@ -87,6 +96,15 @@ class LandingZone:
                 )
             )
         return landed
+
+    def land_audit(self, day: date, run_id: str, record: dict) -> Landed:
+        """Store one run's audit record as JSON. The pipeline writes its own audit."""
+        data = json.dumps(record, sort_keys=True, default=str).encode()
+        return self._put(audit_key(day, run_id), data, "application/json", {"run-id": run_id})
+
+    def read(self, key: str) -> bytes:
+        """Bytes of a landed object. Needs only s3:GetObject."""
+        return self._s3.get_object(Bucket=self.bucket, Key=key)["Body"].read()
 
     def exists(self, key: str) -> bool:
         """Whether the key has a current version. Needs only s3:GetObject."""
