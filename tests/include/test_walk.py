@@ -66,6 +66,20 @@ class TestDayFor:
         assert walk.day_for(datetime(2027, 1, 1, 6, tzinfo=UTC)) == date(2026, 12, 31)
 
 
+class TestRunTime:
+    TICK = datetime(2026, 10, 3, 6, tzinfo=UTC)
+    NOW = datetime(2026, 10, 4, 16, 27, tzinfo=UTC)
+
+    def test_scheduled_runs_carry_the_tick_in_both(self):
+        assert walk.run_time(self.TICK, self.TICK) == self.TICK
+
+    def test_a_manual_logical_date_wins_over_the_trigger_time(self):
+        assert walk.run_time(self.TICK, self.NOW) == self.TICK
+
+    def test_without_a_logical_date_the_trigger_time_is_used(self):
+        assert walk.run_time(None, self.NOW) == self.NOW
+
+
 class TestBatches:
     def test_splits_into_half_open_ranges(self):
         assert walk.batches(250, size=100) == [(0, 100), (100, 200), (200, 250)]

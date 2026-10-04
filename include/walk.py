@@ -32,6 +32,17 @@ SWEEP_DAYS = 7
 logger = logging.getLogger(__name__)
 
 
+def run_time(logical_date: datetime | None, data_interval_start: datetime) -> datetime:
+    """The time a run is for.
+
+    Scheduled runs carry the tick in both fields. A manual run triggered with a
+    logical date carries it in logical_date while data_interval_start is the
+    trigger time, so logical_date wins when present; a manual run without one
+    falls back to the trigger time and walks yesterday.
+    """
+    return logical_date if logical_date is not None else data_interval_start
+
+
 def day_for(run_time: datetime) -> date:
     """The day a run walks: the calendar day before the time the run is for.
 

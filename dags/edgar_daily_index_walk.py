@@ -55,9 +55,9 @@ def landing_zone() -> LandingZone:
 )
 def edgar_daily_index_walk():
     @task(pool="edgar")
-    def plan_walk(data_interval_start: datetime) -> dict:
-        """Walks the day before the run time; see walk.day_for."""
-        day = walk.day_for(data_interval_start)
+    def plan_walk(logical_date: datetime | None, data_interval_start: datetime) -> dict:
+        """Walks the day before the run time; see walk.run_time and walk.day_for."""
+        day = walk.day_for(walk.run_time(logical_date, data_interval_start))
         return walk.plan_days(edgar_client(), landing_zone(), day, since=walk.day_for(START))
 
     @task(pool="edgar")
@@ -83,10 +83,11 @@ def edgar_daily_index_walk():
         plan: dict | None,
         results: Sequence[dict] | None,
         run_id: str,
+        logical_date: datetime | None,
         data_interval_start: datetime,
     ) -> str:
         """Written whatever happened upstream; a failed upstream shows as None here."""
-        day = walk.day_for(data_interval_start)
+        day = walk.day_for(walk.run_time(logical_date, data_interval_start))
         materialized = list(results) if results is not None else []
         plan = plan or {"day": day.isoformat(), "published": None, "sweep": []}
         record = walk.audit_record(plan, materialized, run_id, datetime.now(UTC).isoformat())
