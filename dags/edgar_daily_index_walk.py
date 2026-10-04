@@ -1,12 +1,16 @@
 """Walk EDGAR's daily index for the previous day and land every 13F filing it lists.
 
-Runs at 06:00 UTC, after the SEC posts the day's index around 10 PM Eastern.
-A day without an index is a skip (weekends, holidays, not yet posted); a late
-posting is swept by a later run. Everything that talks to EDGAR sits in the
-`edgar` pool, one slot, so a single client limiter governs the request rate.
-The index walk starts on 2026-09-01, the day after the last SEC 13F TSV
-dataset available when this was written (01jun2026-31aug2026) ended, so the
-XML path begins where the historical path stopped.
+Runs at 06:00 UTC and walks the previous calendar day, after the SEC posts
+that day's index around 10 PM Eastern. Airflow 3's cron timetable sets
+data_interval_start to the trigger time itself, so the day is derived by
+walk.day_for rather than read from an interval. A day without an index is a
+skip (weekends, holidays, not yet posted); a late posting is swept by a later
+run. Everything that talks to EDGAR sits in the `edgar` pool, one slot, so a
+single client limiter governs the request rate.
+
+The first run walks 2026-09-01, the day after the last SEC 13F TSV dataset
+available when this was written (01jun2026-31aug2026) ended, so the XML path
+begins where the historical path stopped.
 """
 
 from collections.abc import Sequence
@@ -20,7 +24,8 @@ from include.edgar_client import EdgarClient
 from include.landing import LandingZone
 
 AWS_CONN_ID = "aws_default"
-START = datetime(2026, 9, 1, tzinfo=UTC)
+# The first run, at 06:00 UTC on 2026-09-02, walks 2026-09-01.
+START = datetime(2026, 9, 2, tzinfo=UTC)
 
 
 def edgar_client() -> EdgarClient:
@@ -51,12 +56,9 @@ def landing_zone() -> LandingZone:
 def edgar_daily_index_walk():
     @task(pool="edgar")
     def plan_walk(data_interval_start: datetime) -> dict:
-        """Runs at 06:00 UTC; data_interval_start.date() is D-1, the day
-        whose index the SEC posted around 02:00 UTC."""
-        plan = walk.plan_days(
-            edgar_client(), landing_zone(), data_interval_start.date(), since=START.date()
-        )
-        return plan
+        """Walks the day before the run time; see walk.day_for."""
+        day = walk.day_for(data_interval_start)
+        return walk.plan_days(edgar_client(), landing_zone(), day, since=walk.day_for(START))
 
     @task(pool="edgar")
     def land_indexes(plan: dict) -> list[dict]:
@@ -84,7 +86,7 @@ def edgar_daily_index_walk():
         data_interval_start: datetime,
     ) -> str:
         """Written whatever happened upstream; a failed upstream shows as None here."""
-        day = data_interval_start.date()
+        day = walk.day_for(data_interval_start)
         materialized = list(results) if results is not None else []
         plan = plan or {"day": day.isoformat(), "published": None, "sweep": []}
         record = walk.audit_record(plan, materialized, run_id, datetime.now(UTC).isoformat())

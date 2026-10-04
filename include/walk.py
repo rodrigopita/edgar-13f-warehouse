@@ -8,7 +8,7 @@ a scripted HTTP session and an in-process S3.
 
 import logging
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from include.edgar_client import EdgarClient, EdgarError
 from include.edgar_filing import FilingLayoutError, fetch_filing
@@ -30,6 +30,16 @@ BATCH_SIZE = 100
 SWEEP_DAYS = 7
 
 logger = logging.getLogger(__name__)
+
+
+def day_for(run_time: datetime) -> date:
+    """The day a run walks: the calendar day before the time the run is for.
+
+    Airflow 3's cron timetable sets data_interval_start to the trigger time
+    itself, so a run at 06:00 UTC on day D walks D-1, whose index the SEC
+    posted around 02:00 UTC that morning.
+    """
+    return run_time.date() - timedelta(days=1)
 
 
 def plan_days(client: EdgarClient, zone: LandingZone, day: date, since: date) -> dict:

@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import boto3
@@ -52,6 +52,18 @@ def zone(s3) -> LandingZone:
 @pytest.fixture
 def client(session, clock, sleeper) -> EdgarClient:
     return EdgarClient("someone@example.com", session=session, clock=clock, sleeper=sleeper)
+
+
+class TestDayFor:
+    def test_a_run_at_0600_walks_the_previous_day(self):
+        assert walk.day_for(datetime(2026, 9, 23, 6, 0, tzinfo=UTC)) == date(2026, 9, 22)
+
+    def test_a_manual_run_in_the_afternoon_also_walks_yesterday(self):
+        assert walk.day_for(datetime(2026, 9, 23, 15, 42, tzinfo=UTC)) == date(2026, 9, 22)
+
+    def test_crosses_month_and_year_boundaries(self):
+        assert walk.day_for(datetime(2026, 10, 1, 6, tzinfo=UTC)) == date(2026, 9, 30)
+        assert walk.day_for(datetime(2027, 1, 1, 6, tzinfo=UTC)) == date(2026, 12, 31)
 
 
 class TestBatches:

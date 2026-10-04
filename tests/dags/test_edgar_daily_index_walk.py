@@ -20,7 +20,8 @@ def test_schedule_and_catchup_follow_the_scope_decisions(dag):
     assert dag.schedule == "0 6 * * *"
     assert dag.catchup is True
     assert dag.max_active_runs == 1
-    assert dag.start_date == datetime(2026, 9, 1, tzinfo=UTC)
+    # The first run, at 06:00 UTC on the 2nd, walks 2026-09-01, where the TSV path ends.
+    assert dag.start_date == datetime(2026, 9, 2, tzinfo=UTC)
     assert dag.dagrun_timeout == timedelta(hours=3)
 
 
@@ -33,6 +34,13 @@ def test_every_edgar_calling_task_is_in_the_one_slot_pool(dag):
         "walk_batch": "edgar",
         "record_audit": "default_pool",
     }
+
+
+def test_the_timetable_is_the_trigger_kind_the_day_arithmetic_assumes(dag):
+    # Airflow 3 gives a cron string a CronTriggerTimetable: data_interval_start is
+    # the trigger time, not the start of a preceding interval. walk.day_for relies
+    # on that; if the timetable ever changes, the day would be off by one.
+    assert type(dag.timetable).__name__ == "CronTriggerTimetable"
 
 
 def test_the_audit_runs_whatever_happened_upstream(dag):
