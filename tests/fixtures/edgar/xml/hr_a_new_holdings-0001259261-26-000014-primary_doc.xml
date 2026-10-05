@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/thirteenffiler" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>13F-HR/A</submissionType>
+    <filerInfo>
+      <liveTestFlag>LIVE</liveTestFlag>
+      <flags>
+        <confirmingCopyFlag>false</confirmingCopyFlag>
+        <returnCopyFlag>true</returnCopyFlag>
+        <overrideInternetFlag>false</overrideInternetFlag>
+      </flags>
+      <filer>
+        <credentials>
+          <cik>0001259261</cik>
+          <ccc>XXXXXXXX</ccc>
+        </credentials>
+      </filer>
+      <periodOfReport>09-30-2025</periodOfReport>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPage>
+      <reportCalendarOrQuarter>09-30-2025</reportCalendarOrQuarter>
+      <isAmendment>true</isAmendment>
+      <amendmentNo>1</amendmentNo>
+      <amendmentInfo>
+        <amendmentType>NEW HOLDINGS</amendmentType>
+      </amendmentInfo>
+      <filingManager>
+        <name>BOSTON RESEARCH &amp; MANAGEMENT INC</name>
+        <address>
+          <com:street1>40 BEACH STREET</com:street1>
+          <com:street2>SUITE 200</com:street2>
+          <com:city>MANCHESTER</com:city>
+          <com:stateOrCountry>MA</com:stateOrCountry>
+          <com:zipCode>01944</com:zipCode>
+        </address>
+      </filingManager>
+      <reportType>13F HOLDINGS REPORT</reportType>
+      <form13FFileNumber>028-10522</form13FFileNumber>
+      <provideInfoForInstruction5>N</provideInfoForInstruction5>
+    </coverPage>
+    <signatureBlock>
+      <name>Daniel F. Tortola, CFA</name>
+      <title>CIO</title>
+      <phone>978-526-9700</phone>
+      <signature>Daniel F. Tortola, CFA</signature>
+      <city>Manchester-by-the-Sea</city>
+      <stateOrCountry>MA</stateOrCountry>
+      <signatureDate>09-01-2026</signatureDate>
+    </signatureBlock>
+    <summaryPage>
+      <otherIncludedManagersCount>0</otherIncludedManagersCount>
+      <tableEntryTotal>120</tableEntryTotal>
+      <tableValueTotal>457549959</tableValueTotal>
+    </summaryPage>
+  </formData>
+</edgarSubmission>

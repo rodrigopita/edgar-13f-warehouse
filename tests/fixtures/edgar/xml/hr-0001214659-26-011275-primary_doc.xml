@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xsi:schemaLocation="http://www.sec.gov/edgar/thirteenffiler eis_13F_Filer.xsd" xmlns="http://www.sec.gov/edgar/thirteenffiler" xmlns:ns1="http://www.sec.gov/edgar/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>13F-HR</submissionType>
+    <filerInfo>
+      <liveTestFlag>LIVE</liveTestFlag>
+      <flags>
+        <confirmingCopyFlag>false</confirmingCopyFlag>
+        <overrideInternetFlag>false</overrideInternetFlag>
+      </flags>
+      <filer>
+        <credentials>
+          <cik>0002104502</cik>
+          <ccc>XXXXXXXX</ccc>
+        </credentials>
+      </filer>
+      <periodOfReport>09-30-2025</periodOfReport>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPage>
+      <reportCalendarOrQuarter>09-30-2025</reportCalendarOrQuarter>
+      <isAmendment>false</isAmendment>
+      <filingManager>
+        <name>Davis Wealth Advisors, LLC</name>
+        <address>
+          <ns1:street1>12 STILES ROAD, SUITE 203</ns1:street1>
+          <ns1:city>SALEM</ns1:city>
+          <ns1:stateOrCountry>NH</ns1:stateOrCountry>
+          <ns1:zipCode>03079</ns1:zipCode>
+        </address>
+      </filingManager>
+      <reportType>13F HOLDINGS REPORT</reportType>
+      <form13FFileNumber>028-26531</form13FFileNumber>
+      <crdNumber>000287736</crdNumber>
+      <provideInfoForInstruction5>N</provideInfoForInstruction5>
+    </coverPage>
+    <signatureBlock>
+      <name>Stephanie C Griebel</name>
+      <title>Sr. Wealth Advisor</title>
+      <phone>603-871-4844</phone>
+      <signature>Stephanie C Griebel</signature>
+      <city>Salem</city>
+      <stateOrCountry>NH</stateOrCountry>
+      <signatureDate>08-31-2026</signatureDate>
+    </signatureBlock>
+    <summaryPage>
+      <otherIncludedManagersCount>1</otherIncludedManagersCount>
+      <tableEntryTotal>91</tableEntryTotal>
+      <tableValueTotal>111375990</tableValueTotal>
+      <otherManagers2Info>
+        <otherManager2>
+          <sequenceNumber>1</sequenceNumber>
+          <otherManager>
+            <cik>0000019617</cik>
+            <form13FFileNumber>028-00694</form13FFileNumber>
+            <name>JPMORGAN CHASE &amp; CO</name>
+          </otherManager>
+        </otherManager2>
+      </otherManagers2Info>
+    </summaryPage>
+  </formData>
+</edgarSubmission>

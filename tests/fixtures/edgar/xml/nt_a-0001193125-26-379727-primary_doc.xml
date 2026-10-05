@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xsi:schemaLocation="http://www.sec.gov/edgar/thirteenffiler eis_13F_Filer.xsd" xmlns:ns1="http://www.sec.gov/edgar/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.sec.gov/edgar/thirteenffiler">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>13F-NT/A</submissionType>
+    <filerInfo>
+      <liveTestFlag>LIVE</liveTestFlag>
+      <flags/>
+      <filer>
+        <credentials>
+          <cik>0001562008</cik>
+          <ccc>XXXXXXXX</ccc>
+        </credentials>
+      </filer>
+      <periodOfReport>06-30-2026</periodOfReport>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPage>
+      <reportCalendarOrQuarter>06-30-2026</reportCalendarOrQuarter>
+      <isAmendment>true</isAmendment>
+      <amendmentNo>1</amendmentNo>
+      <amendmentInfo>
+        <amendmentType>RESTATEMENT</amendmentType>
+        <confDeniedExpired>false</confDeniedExpired>
+      </amendmentInfo>
+      <filingManager>
+        <name>Allianz Global Investors Taiwan Ltd.</name>
+        <address>
+          <ns1:street1>7-9 F, NO 42, SEC 2</ns1:street1>
+          <ns1:street2>ZHONGSHAN N RD, ZHONGSHAN DISTRICT</ns1:street2>
+          <ns1:city>TAIPEI CITY</ns1:city>
+          <ns1:stateOrCountry>F5</ns1:stateOrCountry>
+          <ns1:zipCode>10416</ns1:zipCode>
+        </address>
+      </filingManager>
+      <reportType>13F NOTICE</reportType>
+      <form13FFileNumber>028-15071</form13FFileNumber>
+      <otherManagersInfo>
+        <otherManager>
+          <form13FFileNumber>028-15014</form13FFileNumber>
+          <name>Allianz Asset Management GmbH</name>
+        </otherManager>
+      </otherManagersInfo>
+      <provideInfoForInstruction5>Y</provideInfoForInstruction5>
+      <additionalInformation>This restatement is being made to correct inaccuracies contained in the original filing of the related Holdings Report filed with the SEC on August 14, 2026.</additionalInformation>
+    </coverPage>
+    <signatureBlock>
+      <name>Curtis Chan</name>
+      <title>Authorized Signatory</title>
+      <phone>85222388901</phone>
+      <signature>/s/ Curtis Chan</signature>
+      <city>Hong Kong</city>
+      <stateOrCountry>K3</stateOrCountry>
+      <signatureDate>08-27-2026</signatureDate>
+    </signatureBlock>
+  </formData>
+</edgarSubmission>

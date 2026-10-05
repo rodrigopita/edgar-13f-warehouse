@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/thirteenffiler" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>13F-NT</submissionType>
+    <filerInfo>
+      <liveTestFlag>LIVE</liveTestFlag>
+      <flags>
+        <confirmingCopyFlag>false</confirmingCopyFlag>
+        <returnCopyFlag>true</returnCopyFlag>
+        <overrideInternetFlag>false</overrideInternetFlag>
+      </flags>
+      <filer>
+        <credentials>
+          <cik>0001451086</cik>
+          <ccc>XXXXXXXX</ccc>
+        </credentials>
+      </filer>
+      <periodOfReport>06-30-2026</periodOfReport>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPage>
+      <reportCalendarOrQuarter>06-30-2026</reportCalendarOrQuarter>
+      <filingManager>
+        <name>Attucks Asset Management, LLC</name>
+        <address>
+          <com:street1>321 N. CLARK STREET</com:street1>
+          <com:street2>SUITE 740</com:street2>
+          <com:city>CHICAGO</com:city>
+          <com:stateOrCountry>IL</com:stateOrCountry>
+          <com:zipCode>60654</com:zipCode>
+        </address>
+      </filingManager>
+      <reportType>13F NOTICE</reportType>
+      <form13FFileNumber>028-13412</form13FFileNumber>
+      <otherManagersInfo>
+        <otherManager>
+          <form13FFileNumber>028-05496</form13FFileNumber>
+          <name>The Edgar Lomax Company</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-06194</form13FFileNumber>
+          <name>Paradigm Asset Management, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-10043</form13FFileNumber>
+          <name>Seizert Capital Partners</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-11090</form13FFileNumber>
+          <name>Channing Capital Management, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-14467</form13FFileNumber>
+          <name>Affinity Investment Advisors, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-19839</form13FFileNumber>
+          <name>Heard Capital LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-12179</form13FFileNumber>
+          <name>Phocas Financial</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-10130</form13FFileNumber>
+          <name>Denali Advisors</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-12654</form13FFileNumber>
+          <name>Lisanti Capital Growth LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-14043</form13FFileNumber>
+          <name>Decatur Capital Management, Inc.</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-10871</form13FFileNumber>
+          <name>Profit Investment Management, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-11507</form13FFileNumber>
+          <name>Summit Creek Advisors LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-15835</form13FFileNumber>
+          <name>Pacific Ridge Capital Partners, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-15430</form13FFileNumber>
+          <name>ARGA Investment Management, LP</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-04886</form13FFileNumber>
+          <name>GlobeFlex Capital, LP</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-18598</form13FFileNumber>
+          <name>Slow Capital, inc</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-13214</form13FFileNumber>
+          <name>Ancora Advisors, LLC</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-20805</form13FFileNumber>
+          <name>Heron Bay Capital Management</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-23188</form13FFileNumber>
+          <crdNumber>000310355</crdNumber>
+          <secFileNumber>801-119868</secFileNumber>
+          <name>V-Square Quantitative Management LLC.</name>
+        </otherManager>
+        <otherManager>
+          <form13FFileNumber>028-16855</form13FFileNumber>
+          <name>Isthmus Partners, LLC</name>
+        </otherManager>
+      </otherManagersInfo>
+      <provideInfoForInstruction5>N</provideInfoForInstruction5>
+    </coverPage>
+    <signatureBlock>
+      <name>Derek A. Talley</name>
+      <title>Chief Compliance Officer/Chief Operating Officer</title>
+      <phone>312-422-9900</phone>
+      <signature>Derek A. Talley</signature>
+      <city>Chicago</city>
+      <stateOrCountry>IL</stateOrCountry>
+      <signatureDate>11-12-2025</signatureDate>
+    </signatureBlock>
+  </formData>
+</edgarSubmission>

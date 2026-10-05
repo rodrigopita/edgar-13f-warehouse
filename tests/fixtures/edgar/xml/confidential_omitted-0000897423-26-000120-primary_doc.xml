@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/thirteenffiler" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>13F-HR/A</submissionType>
+    <filerInfo>
+      <liveTestFlag>LIVE</liveTestFlag>
+      <flags>
+        <confirmingCopyFlag>false</confirmingCopyFlag>
+        <returnCopyFlag>false</returnCopyFlag>
+        <overrideInternetFlag>false</overrideInternetFlag>
+      </flags>
+      <filer>
+        <credentials>
+          <cik>0000924920</cik>
+          <ccc>XXXXXXXX</ccc>
+        </credentials>
+      </filer>
+      <periodOfReport>06-30-2026</periodOfReport>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPage>
+      <reportCalendarOrQuarter>06-30-2026</reportCalendarOrQuarter>
+      <isAmendment>true</isAmendment>
+      <amendmentNo>1</amendmentNo>
+      <amendmentInfo>
+        <amendmentType>RESTATEMENT</amendmentType>
+      </amendmentInfo>
+      <filingManager>
+        <name>BASS LEE M /TX/</name>
+        <address>
+          <com:street1>201 MAIN STREET</com:street1>
+          <com:street2>SUITE 3200</com:street2>
+          <com:city>FORT WORTH</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76102</com:zipCode>
+        </address>
+      </filingManager>
+      <reportType>13F HOLDINGS REPORT</reportType>
+      <form13FFileNumber>028-04380</form13FFileNumber>
+      <provideInfoForInstruction5>Y</provideInfoForInstruction5>
+      <additionalInformation>(1) A power of attorney authorizing Ardon E. Moore to act on behalf of Lee M. Bass has been filed with the Commission.</additionalInformation>
+    </coverPage>
+    <signatureBlock>
+      <name>Ardon E. Moore</name>
+      <title>Attorney-in-Fact for Lee M. Bass (1)</title>
+      <phone>817-390-8400</phone>
+      <signature>/s/ Ardon E. Moore</signature>
+      <city>Fort Worth</city>
+      <stateOrCountry>TX</stateOrCountry>
+      <signatureDate>09-10-2026</signatureDate>
+    </signatureBlock>
+    <summaryPage>
+      <otherIncludedManagersCount>2</otherIncludedManagersCount>
+      <tableEntryTotal>0</tableEntryTotal>
+      <tableValueTotal>0</tableValueTotal>
+      <isConfidentialOmitted>true</isConfidentialOmitted>
+      <otherManagers2Info>
+        <otherManager2>
+          <sequenceNumber>1</sequenceNumber>
+          <otherManager>
+            <cik>0000793650</cik>
+            <form13FFileNumber>028-01757</form13FFileNumber>
+            <name>LMBI, L.P.</name>
+          </otherManager>
+        </otherManager2>
+        <otherManager2>
+          <sequenceNumber>2</sequenceNumber>
+          <otherManager>
+            <cik>0001765185</cik>
+            <form13FFileNumber>028-19052</form13FFileNumber>
+            <name>GC-32 Mineral Partners, L.P.</name>
+          </otherManager>
+        </otherManager2>
+      </otherManagers2Info>
+    </summaryPage>
+  </formData>
+</edgarSubmission>
