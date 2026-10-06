@@ -138,6 +138,13 @@ class EdgarClient:
         """
         return self._retrying(self._fetch, self._absolute(url))
 
+    def head(self, url: str) -> dict[str, str]:
+        """Response headers of a HEAD request, under the same limiter and retry policy.
+
+        Used to learn a file's Content-Length before deciding to download it.
+        """
+        return self._retrying(self._fetch_head, self._absolute(url))
+
     def stats(self) -> dict[str, float | int]:
         """Counters since construction, for the task log and the audit table.
 
@@ -165,6 +172,20 @@ class EdgarClient:
         status = response.status_code
         if status == 200:
             return response.content
+        if status == 429 or 500 <= status < 600:
+            raise EdgarRetryableError(status, url)
+        raise EdgarPermanentError(status, url)
+
+    def _fetch_head(self, url: str) -> dict[str, str]:
+        self._limiter.wait()
+        self.requests_made += 1
+        try:
+            response = self.session.head(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+        except requests.RequestException as exc:
+            raise EdgarRetryableError(0, url, f"{type(exc).__name__} for {url}") from exc
+        status = response.status_code
+        if status == 200:
+            return dict(response.headers)
         if status == 429 or 500 <= status < 600:
             raise EdgarRetryableError(status, url)
         raise EdgarPermanentError(status, url)

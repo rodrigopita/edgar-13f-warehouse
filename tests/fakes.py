@@ -29,9 +29,12 @@ class FakeSleeper:
 class FakeResponse:
     """The two attributes of requests.Response the client reads."""
 
-    def __init__(self, status_code: int, content: bytes = b"") -> None:
+    def __init__(
+        self, status_code: int, content: bytes = b"", headers: dict[str, str] | None = None
+    ) -> None:
         self.status_code = status_code
         self.content = content
+        self.headers = headers or {}
 
 
 class FakeSession:
@@ -50,9 +53,17 @@ class FakeSession:
         self._responses.extend(responses)
 
     def get(self, url: str, timeout: tuple[float, float] | None = None) -> FakeResponse:
-        self.calls.append(url)
+        return self._next("GET", url)
+
+    def head(
+        self, url: str, timeout: tuple[float, float] | None = None, allow_redirects: bool = True
+    ) -> FakeResponse:
+        return self._next("HEAD", url)
+
+    def _next(self, method: str, url: str) -> FakeResponse:
+        self.calls.append(url if method == "GET" else f"HEAD {url}")
         if not self._responses:
-            raise AssertionError(f"unexpected request, nothing queued: {url}")
+            raise AssertionError(f"unexpected {method}, nothing queued: {url}")
         item = self._responses.pop(0)
         if isinstance(item, Exception):
             raise item
