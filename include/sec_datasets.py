@@ -2,16 +2,14 @@
 
 The SEC publishes one zip per filing-date window with seven tab-separated
 tables extracted from every 13F submission. This module lists them from the
-datasets page, downloads them idempotently, and (in a later step) profiles
-them. Historical backfill comes from these files and nothing else; the XML
-path begins where the newest of them ends.
+datasets page and downloads them idempotently; sec_profile reads them and
+sec_cli drives both. Historical backfill comes from these files and nothing
+else; the XML path begins where the newest of them ends.
 """
 
-import argparse
 import logging
 import os
 import re
-import sys
 import time
 from dataclasses import dataclass
 from datetime import date
@@ -112,47 +110,3 @@ def download(client: EdgarClient, dataset: Dataset, dest: Path = DEFAULT_DEST) -
     os.replace(partial, target)
     logger.info("%s: %d bytes in %.1f s", dataset.name, len(data), time.monotonic() - started)
     return target
-
-
-def _client_from_env() -> EdgarClient:
-    contact = os.environ.get("AIRFLOW_VAR_EDGAR_CONTACT")
-    if not contact:
-        sys.exit(
-            "set AIRFLOW_VAR_EDGAR_CONTACT (see .env.example); run with uv run --env-file .env"
-        )
-    return EdgarClient(contact)
-
-
-def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="python -m include.sec_datasets")
-    sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("list", help="print the data sets the SEC lists, oldest first")
-    dl = sub.add_parser("download", help="fetch every data set not yet complete under --dest")
-    dl.add_argument("--dest", type=Path, default=DEFAULT_DEST)
-    dl.add_argument("--only", help="substring of a name, to fetch a subset")
-    args = parser.parse_args(argv)
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    client = _client_from_env()
-    datasets = list_datasets(client)
-    if args.command == "list":
-        for d in datasets:
-            print(f"{d.window_start} {d.window_end} {d.name}")
-        print(f"{len(datasets)} data sets", file=sys.stderr)
-        return
-    chosen = [d for d in datasets if not args.only or args.only in d.name]
-    for d in chosen:
-        download(client, d, args.dest)
-    stats = client.stats()
-    logger.info(
-        "%d data sets under %s; %d requests, %d retries, %.2f req/s",
-        len(chosen),
-        args.dest,
-        stats["requests_made"],
-        stats["retries"],
-        stats["requests_per_second"],
-    )
-
-
-if __name__ == "__main__":
-    main()
