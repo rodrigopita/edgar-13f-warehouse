@@ -53,6 +53,10 @@ class TestForm13F:
         assert not Form13F.HR.is_amendment
         assert not Form13F.NT.is_amendment
 
+    def test_holdings_reports_have_a_table_and_notices_do_not(self):
+        assert Form13F.HR.has_info_table and Form13F.HR_A.has_info_table
+        assert not Form13F.NT.has_info_table and not Form13F.NT_A.has_info_table
+
     def test_a_parsed_form_type_compares_with_the_enum(self, real_index):
         entry = parse_form_index(real_index)[0]
 

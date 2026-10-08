@@ -31,6 +31,11 @@ class Form13F(StrEnum):
     def is_amendment(self) -> bool:
         return self.endswith("/A")
 
+    @property
+    def has_info_table(self) -> bool:
+        """Holdings reports carry an information table; notices carry only a cover page."""
+        return self.startswith("13F-HR")
+
 
 FORM_TYPES_13F = frozenset(Form13F)
 

@@ -56,7 +56,7 @@ def list_filing_documents(client: EdgarClient, entry: IndexEntry) -> FilingDocum
     if PRIMARY_DOC not in names:
         raise FilingLayoutError(f"{entry.accession}: no {PRIMARY_DOC} in {sorted(names)}")
     tables = sorted(n for n in names if n.lower().endswith(".xml") and n != PRIMARY_DOC)
-    expects_table = form in (Form13F.HR, Form13F.HR_A)
+    expects_table = form.has_info_table
     if expects_table and len(tables) != 1:
         raise FilingLayoutError(
             f"{entry.accession} ({form}): expected one information table, found {tables}"

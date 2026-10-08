@@ -2,7 +2,7 @@
 
 The SEC publishes one zip per filing-date window with seven tab-separated
 tables extracted from every 13F submission. This module lists them from the
-datasets page and downloads them idempotently; sec_profile reads them and
+datasets page and downloads them, skipping complete copies; sec_profile reads them and
 sec_cli drives both. Historical backfill comes from these files and nothing
 else; the XML path begins where the newest of them ends.
 """

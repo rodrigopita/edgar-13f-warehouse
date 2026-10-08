@@ -9,6 +9,7 @@ dependencies = [
     "apache-airflow-providers-amazon==9.36.0",
     "apache-airflow-providers-snowflake==6.17.0",
     "boto3==1.43.100",
+    "pydantic==2.13.5",
     "requests==2.34.2",
     "tenacity==9.1.4",
 ]
@@ -32,4 +33,4 @@ extend-exclude = [".astro"]
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-m 'not live'"
-markers = ["live: taks to sec.gov; deselected by default, run with -m live"]
+markers = ["live: talks to sec.gov; deselected by default, run with -m live"]

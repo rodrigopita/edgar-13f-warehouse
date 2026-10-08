@@ -14,6 +14,7 @@ from include.edgar_client import EdgarClient, EdgarError
 from include.edgar_filing import FilingLayoutError, fetch_filing
 from include.edgar_index import (
     Form13F,
+    IndexEntry,
     fetch_daily_index,
     list_index_days,
     parse_form_index,
@@ -154,11 +155,12 @@ def walk_batch(client: EdgarClient, zone: LandingZone, key: str, start: int, sto
     return {"landed": landed, "present": present, "failed": failed, "client": stats}
 
 
-def _already_landed(zone: LandingZone, entry) -> bool:
+def _already_landed(zone: LandingZone, entry: IndexEntry) -> bool:
     if not zone.exists(primary_doc_key(entry.filed, entry.accession)):
         return False
-    needs_table = Form13F(entry.form_type) in (Form13F.HR, Form13F.HR_A)
-    return not needs_table or zone.exists(info_table_key(entry.filed, entry.accession))
+    if not Form13F(entry.form_type).has_info_table:
+        return True
+    return zone.exists(info_table_key(entry.filed, entry.accession))
 
 
 def audit_record(plan: dict, results: list[dict], run_id: str, recorded_at: str) -> dict:

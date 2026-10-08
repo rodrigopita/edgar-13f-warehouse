@@ -6,9 +6,9 @@ Written 2026-10-07 from `uv run --env-file .env python -m include.sec_cli profil
 
 - **54 data sets tile the timeline without a gap**, from 2013q2 to 01jun2026-31aug2026. The first 43 are named by calendar quarter, the rest by filing-date window; the newest ends 2026-08-31, the day before the XML walk begins.
 - **409,685 filings and 124,012,468 holdings rows.** INFOTABLE grew from 87,715 rows in 2013q2 to 3,830,274 in the newest window; filings per window from 166 to 11,852.
-- **The VALUE unit change is visible in the data, not only in the readme.** The share of rows with VALUE under 1,000 sits between 47% and 60% through 2022q4 and falls to 16% in 2023q1; the median VALUE jumps from 534 to 235,513, a factor of 440. Values before 2023-01-03 are in thousands of dollars and must be multiplied by 1,000 in the core layer; the XML path, which starts in 2026, needs no conversion.
+- **The VALUE unit change is visible in the data, not only in the readme.** The share of rows with VALUE under 1,000 sits between 47% and 63% through 2022q4 and falls to 16% in 2023q1; the median VALUE jumps from 534 to 235,513, a factor of 440. Values before 2023-01-03 are in thousands of dollars and must be multiplied by 1,000 in the core layer; the XML path, which starts in 2026, needs no conversion.
 - **FIGI is empty before 2023** and filled on 7% to 12% of rows after, so CUSIP is the only identifier for the history and FIGI-based enrichment can only ever cover the recent tail.
-- **Amendments are 15,727 of 307,228 holdings reports (5%)**: 11,140 restatements and 5,329 new-holdings additions. The two values of AMENDMENTTYPE are exactly those the XML parser types as a Literal.
+- **Amendments are 16,483 of 409,685 filings (4%)**: 15,727 holdings-report amendments and 756 notice amendments. 16,469 carry an AMENDMENTTYPE, 11,140 RESTATEMENT and 5,329 NEW HOLDINGS, and 14 carry none. The two values are exactly those the XML parser types as a Literal.
 - **One zip, 01jun2025-31aug2025, packs its tables inside a folder**; the other 53 are flat. The profiler matches members by base name.
 
 ## Per data set

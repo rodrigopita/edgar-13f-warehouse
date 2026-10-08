@@ -23,9 +23,10 @@ DEFAULT_MAX_RPS = 8
 USER_AGENT_TEMPLATE = "edgar-13f-warehouse {contact}"
 # Seconds to connect, seconds to wait for the first byte.
 REQUEST_TIMEOUT = (5, 30)
-# Five attempts with waits of 1, 2, 4 and 8 seconds between them. sec.gov lifts a
-# rate block once the caller stays under the limit for ten minutes, so the last
-# wait is long enough to matter and short enough for a task to finish.
+# Five attempts with waits of 1, 2, 4 and 8 seconds between them, 15 seconds in
+# all. That covers a transient error, not a rate block: sec.gov lifts a block only
+# after ten minutes under the limit, which is left to the task retry (5 minutes in
+# the DAG) rather than to a client that would hold a pool slot while sleeping.
 RETRY_ATTEMPTS = 5
 RETRY_WAIT_MIN = 1.0
 RETRY_WAIT_MAX = 30.0
@@ -146,7 +147,7 @@ class EdgarClient:
         return self._retrying(self._fetch_head, self._absolute(url))
 
     def stats(self) -> dict[str, float | int]:
-        """Counters since construction, for the task log and the audit table.
+        """Counters since construction, for the task log and the audit record.
 
         requests_per_second is the observed average, attempts included, so the
         README can quote the rate the walker held against the SEC's limit.
@@ -161,31 +162,34 @@ class EdgarClient:
 
     def _fetch(self, url: str) -> bytes:
         """One attempt: wait for the limiter, request, map the status to a result."""
-        self._limiter.wait()
-        self.requests_made += 1
-        if self.requests_made % LOG_EVERY == 0:
-            self._log_rate()
+        self._before_request()
         try:
             response = self.session.get(url, timeout=REQUEST_TIMEOUT)
         except requests.RequestException as exc:
             raise EdgarRetryableError(0, url, f"{type(exc).__name__} for {url}") from exc
-        status = response.status_code
-        if status == 200:
-            return response.content
-        if status == 429 or 500 <= status < 600:
-            raise EdgarRetryableError(status, url)
-        raise EdgarPermanentError(status, url)
+        self._raise_unless_ok(response.status_code, url)
+        return response.content
 
     def _fetch_head(self, url: str) -> dict[str, str]:
-        self._limiter.wait()
-        self.requests_made += 1
+        self._before_request()
         try:
             response = self.session.head(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
         except requests.RequestException as exc:
             raise EdgarRetryableError(0, url, f"{type(exc).__name__} for {url}") from exc
-        status = response.status_code
+        self._raise_unless_ok(response.status_code, url)
+        return dict(response.headers)
+
+    def _before_request(self) -> None:
+        """Every attempt, GET or HEAD, waits for the limiter and counts toward the rate."""
+        self._limiter.wait()
+        self.requests_made += 1
+        if self.requests_made % LOG_EVERY == 0:
+            self._log_rate()
+
+    @staticmethod
+    def _raise_unless_ok(status: int, url: str) -> None:
         if status == 200:
-            return dict(response.headers)
+            return
         if status == 429 or 500 <= status < 600:
             raise EdgarRetryableError(status, url)
         raise EdgarPermanentError(status, url)

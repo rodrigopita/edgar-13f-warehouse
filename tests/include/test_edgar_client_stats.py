@@ -67,6 +67,16 @@ class TestLogging:
         assert "HTTP 429" in warnings[0].getMessage()
         assert "retrying in 1 s" in warnings[0].getMessage()
 
+    def test_head_requests_count_toward_the_rate_log(self, client, session, caplog):
+        session.queue(*[FakeResponse(200, headers={"Content-Length": "1"})] * LOG_EVERY)
+        caplog.set_level(logging.INFO, logger="include.edgar_client")
+
+        for _ in range(LOG_EVERY):
+            client.head(URL)
+
+        assert client.stats()["requests_made"] == LOG_EVERY
+        assert sum(r.getMessage().startswith("edgar rate") for r in caplog.records) == 1
+
     def test_logs_the_rate_every_hundred_requests(self, client, session, caplog):
         session.queue(*[FakeResponse(200, b"x")] * (2 * LOG_EVERY))
         caplog.set_level(logging.INFO, logger="include.edgar_client")
