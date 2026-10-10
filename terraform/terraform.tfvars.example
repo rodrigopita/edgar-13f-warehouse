@@ -1,4 +1,10 @@
 bucket_name = "edgar-13f-warehouse-landing-<your-suffix>"
 owner       = "<your-name>"
+aws_profile = "<profile with rights over the bucket and IAM>"
 # region      = "us-east-1"
 # environment = "prod"
+
+# Account identifier <organization>-<account>, from Snowsight's Account Details.
+snowflake_organization_name = "<organization>"
+snowflake_account_name      = "<account>"
+# The key passphrase stays out of this file: export TF_VAR_snowflake_private_key_passphrase.
