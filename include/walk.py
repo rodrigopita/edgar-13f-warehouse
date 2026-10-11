@@ -1,9 +1,9 @@
 """One run of the EDGAR walk as functions over the client and the landing zone.
 
 The DAG decides when; this module decides what: which days a run walks, how a
-day's filings split into batches, how one batch lands, and what the audit
-record says. Nothing here imports Airflow, so all of it runs under pytest with
-a scripted HTTP session and an in-process S3.
+day's filings split into batches, how one batch lands and then parses, and what
+the audit record says. Nothing here imports Airflow, so all of it runs under
+pytest with a scripted HTTP session and an in-process S3.
 """
 
 import logging
@@ -20,7 +20,15 @@ from include.edgar_index import (
     parse_form_index,
     quarter_path,
 )
-from include.landing import LandingZone, index_key, info_table_key, primary_doc_key
+from include.edgar_xml import (
+    Holding,
+    Reconciliation,
+    parse_cover_page,
+    parse_information_table,
+    reconcile,
+)
+from include.landing import LandingZone, index_key, info_table_key, parsed_key, primary_doc_key
+from include.parsed import filing_lines
 
 # Filings per mapped batch. A wave day has about 2,600 filings and Airflow maps at
 # most 1,024 instances, so batches keep the map small; under the one-slot pool they
@@ -163,8 +171,84 @@ def _already_landed(zone: LandingZone, entry: IndexEntry) -> bool:
     return zone.exists(info_table_key(entry.filed, entry.accession))
 
 
-def audit_record(plan: dict, results: list[dict], run_id: str, recorded_at: str) -> dict:
-    """One run's numbers, written by the pipeline: discovered, landed, present, failed."""
+def parse_batch(zone: LandingZone, key: str, start: int, stop: int) -> dict:
+    """Parse the landed filings in one slice of a landed index into JSON lines.
+
+    The XML is read back from S3, so a parse never works from bytes that were
+    not landed. A filing whose JSON lines exist costs one HEAD; a filing whose
+    XML is not in S3 (its landing failed) is left for the run that lands it. A
+    filing that does not parse writes nothing and is recorded with its reason.
+    A table that disagrees with the filer's own totals is written and recorded:
+    that is data quality, not a load failure.
+    """
+    entries = parse_form_index(zone.read(key))[start:stop]
+    parsed: list[str] = []
+    present: list[str] = []
+    not_landed: list[str] = []
+    failed: list[dict] = []
+    gaps: list[dict] = []
+    for entry in entries:
+        if zone.exists(parsed_key(entry.filed, entry.accession)):
+            present.append(entry.accession)
+            continue
+        if not _already_landed(zone, entry):
+            not_landed.append(entry.accession)
+            continue
+        # Every way filer data breaks the parser is a ValueError: XmlParseError,
+        # XmlRecordError, and a malformed date, which _mdy raises as a plain one.
+        try:
+            data, reconciliation = _parsed_lines(zone, entry)
+        except ValueError as exc:
+            logger.warning("%s %s did not parse: %s", entry.form_type, entry.accession, exc)
+            failed.append(
+                {
+                    "accession": entry.accession,
+                    "form_type": entry.form_type,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
+        zone.land_parsed(entry.filed, entry.accession, data)
+        parsed.append(entry.accession)
+        if reconciliation is not None and not (
+            reconciliation.entries_match and reconciliation.values_match
+        ):
+            gaps.append({"accession": entry.accession} | reconciliation.model_dump())
+    logger.info(
+        "parse %s[%d:%d]: %d parsed, %d present, %d not landed, %d failed, %d reconcile gaps",
+        key,
+        start,
+        stop,
+        len(parsed),
+        len(present),
+        len(not_landed),
+        len(failed),
+        len(gaps),
+    )
+    return {
+        "parsed": parsed,
+        "parse_present": present,
+        "not_landed": not_landed,
+        "parse_failed": failed,
+        "reconcile_gaps": gaps,
+    }
+
+
+def _parsed_lines(zone: LandingZone, entry: IndexEntry) -> tuple[bytes, Reconciliation | None]:
+    cover_key = primary_doc_key(entry.filed, entry.accession)
+    cover = parse_cover_page(zone.read(cover_key), entry.accession)
+    holdings: list[Holding] = []
+    table_key = None
+    if Form13F(entry.form_type).has_info_table:
+        table_key = info_table_key(entry.filed, entry.accession)
+        holdings = parse_information_table(zone.read(table_key), entry.accession)
+    return filing_lines(cover, cover_key, holdings, table_key), reconcile(cover, holdings)
+
+
+def audit_record(
+    plan: dict, results: list[dict], parse_results: list[dict], run_id: str, recorded_at: str
+) -> dict:
+    """One run's numbers, written by the pipeline: what was discovered, landed and parsed."""
     days: dict[str, dict] = {}
     for result in results:
         days.setdefault(
@@ -189,4 +273,9 @@ def audit_record(plan: dict, results: list[dict], run_id: str, recorded_at: str)
         "requests_made": sum(r["client"]["requests_made"] for r in results),
         "retries": sum(r["client"]["retries"] for r in results),
         "batches": len(results),
+        "parsed": sum(len(r["parsed"]) for r in parse_results),
+        "parsed_already_present": sum(len(r["parse_present"]) for r in parse_results),
+        "not_landed": sum(len(r["not_landed"]) for r in parse_results),
+        "parse_failed": [f for r in parse_results for f in r["parse_failed"]],
+        "reconcile_gaps": [g for r in parse_results for g in r["reconcile_gaps"]],
     }

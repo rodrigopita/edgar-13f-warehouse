@@ -6,6 +6,10 @@ with the same bytes: idempotent (safe to rerun: a second run of the same input
 changes nothing). The bucket is versioned, so an overwrite keeps the prior
 version. The module imports nothing from Airflow; the DAG hands it a boto3
 client built from the Airflow connection.
+
+Parsed JSON lines sit beside the raw bytes under parsed/: derived from the
+landed XML, never fetched, and keyed the same way. A new file there is what
+the bucket notification hands to Snowpipe.
 """
 
 import json
@@ -21,6 +25,7 @@ from include.edgar_filing import FilingBytes
 INDEX_PREFIX = "raw/edgar/index"
 FILINGS_PREFIX = "raw/edgar/filings"
 AUDIT_PREFIX = "raw/edgar/audit/walk"
+PARSED_PREFIX = "parsed/edgar/filings"
 PRIMARY_DOC_NAME = "primary_doc.xml"
 # The filer chooses the information table's file name. It is stored under one
 # fixed name, and the original is kept as object metadata.
@@ -41,6 +46,11 @@ def primary_doc_key(filed: date, accession: str) -> str:
 
 def info_table_key(filed: date, accession: str) -> str:
     return filing_prefix(filed, accession) + INFO_TABLE_NAME
+
+
+def parsed_key(filed: date, accession: str) -> str:
+    """One JSON-lines file per filing, partitioned like the XML it was parsed from."""
+    return f"{PARSED_PREFIX}/filed={filed.isoformat()}/{accession}.jsonl"
 
 
 def audit_key(day: date, run_id: str) -> str:
@@ -96,6 +106,12 @@ class LandingZone:
                 )
             )
         return landed
+
+    def land_parsed(self, filed: date, accession: str, data: bytes) -> Landed:
+        """Store one filing's JSON lines, which Snowpipe loads when they arrive."""
+        return self._put(
+            parsed_key(filed, accession), data, "application/x-ndjson", {"accession": accession}
+        )
 
     def land_audit(self, day: date, run_id: str, record: dict) -> Landed:
         """Store one run's audit record as JSON. The pipeline writes its own audit."""

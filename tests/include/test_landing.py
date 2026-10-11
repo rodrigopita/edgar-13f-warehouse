@@ -12,6 +12,7 @@ from include.landing import (
     filing_prefix,
     index_key,
     info_table_key,
+    parsed_key,
     primary_doc_key,
 )
 
@@ -59,6 +60,11 @@ class TestKeys:
             primary_doc_key(date(2026, 9, 22), "0001535452-26-000006") == prefix + "primary_doc.xml"
         )
         assert info_table_key(date(2026, 9, 22), "0001535452-26-000006") == prefix + "infotable.xml"
+
+    def test_parsed_key_is_one_file_per_filing_partitioned_like_its_xml(self):
+        key = parsed_key(date(2026, 9, 22), "0001535452-26-000006")
+
+        assert key == "parsed/edgar/filings/filed=2026-09-22/0001535452-26-000006.jsonl"
 
 
 @pytest.fixture
@@ -142,6 +148,19 @@ class TestLandFiling:
         landed = zone.land_filing(FilingBytes(late, docs, b"<a/>", b"<b/>"))
 
         assert all(item.key.startswith("raw/edgar/filings/filed=2026-03-31/") for item in landed)
+
+
+def test_land_parsed_writes_json_lines_under_the_parsed_prefix(zone, s3):
+    data = b'{"accession":"0001535452-26-000006","record_type":"cover"}\n'
+
+    landed = zone.land_parsed(date(2026, 9, 22), "0001535452-26-000006", data)
+
+    assert landed.key == "parsed/edgar/filings/filed=2026-09-22/0001535452-26-000006.jsonl"
+    assert stored(s3, landed.key) == {
+        "body": data,
+        "type": "application/x-ndjson",
+        "meta": {"accession": "0001535452-26-000006"},
+    }
 
 
 class TestIdempotency:

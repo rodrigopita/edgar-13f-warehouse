@@ -1,4 +1,4 @@
-"""Walk EDGAR's daily index for the previous day and land every 13F filing it lists.
+"""Walk EDGAR's daily index for the previous day, land every 13F filing it lists, parse it.
 
 Runs at 06:00 UTC and walks the previous calendar day, after the SEC posts
 that day's index around 10 PM Eastern. Airflow 3's cron timetable sets
@@ -6,7 +6,8 @@ data_interval_start to the trigger time itself, so the day is derived by
 walk.day_for rather than read from an interval. A day without an index is a
 skip (weekends, holidays, not yet posted); a late posting is swept by a later
 run. Everything that talks to EDGAR sits in the `edgar` pool, one slot, so a
-single client limiter governs the request rate.
+single client limiter governs the request rate. Parsing reads only S3, so it
+runs outside the pool; each JSON-lines file it writes is loaded by Snowpipe.
 
 The first run walks 2026-09-01, the day after the last SEC 13F TSV dataset
 available when this was written (01jun2026-31aug2026) ended, so the XML path
@@ -78,25 +79,35 @@ def edgar_daily_index_walk():
         )
         return batch | result
 
+    @task
+    def parse_batch(batch: dict) -> dict:
+        """A filing that does not parse is recorded in the result; a raise here is a bug."""
+        return batch | walk.parse_batch(landing_zone(), batch["key"], batch["start"], batch["stop"])
+
     @task(trigger_rule="all_done")
     def record_audit(
         plan: dict | None,
         results: Sequence[dict] | None,
+        parsed: Sequence[dict] | None,
         run_id: str,
         logical_date: datetime | None,
         data_interval_start: datetime,
     ) -> str:
         """Written whatever happened upstream; a failed upstream shows as None here."""
         day = walk.day_for(walk.run_time(logical_date, data_interval_start))
-        materialized = list(results) if results is not None else []
+        landed = list(results) if results is not None else []
+        parse_results = list(parsed) if parsed is not None else []
         plan = plan or {"day": day.isoformat(), "published": None, "sweep": []}
-        record = walk.audit_record(plan, materialized, run_id, datetime.now(UTC).isoformat())
+        record = walk.audit_record(
+            plan, landed, parse_results, run_id, datetime.now(UTC).isoformat()
+        )
         return landing_zone().land_audit(day, run_id, record).key
 
     plan = plan_walk()
     descriptors = land_indexes(plan)
     results = walk_batch.expand(batch=descriptors)
-    record_audit(plan, results)
+    parsed = parse_batch.expand(batch=results)
+    record_audit(plan, results, parsed)
 
 
 edgar_daily_index_walk()

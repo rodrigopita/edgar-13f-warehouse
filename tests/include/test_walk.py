@@ -9,7 +9,7 @@ from moto import mock_aws
 
 from include import walk
 from include.edgar_client import EdgarClient
-from include.landing import LandingZone, index_key, info_table_key, primary_doc_key
+from include.landing import LandingZone, index_key, info_table_key, parsed_key, primary_doc_key
 from tests.fakes import FakeResponse
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "edgar"
@@ -271,6 +271,118 @@ class TestWalkBatch:
         assert result["landed"] == ["0000000002-26-000001"]
 
 
+class TestParseBatch:
+    FILED = date(2026, 9, 22)
+    KEY = index_key(FILED)
+    REPORT_ACCESSION = "0001214659-26-011275"
+    NOTICE_ACCESSION = "0001451086-26-000003"
+    REPORT = row("13F-HR", "REPORT LP", "2104502", "20260922", REPORT_ACCESSION)
+    NOTICE = row("13F-NT", "NOTICE LP", "1451086", "20260922", NOTICE_ACCESSION)
+    XML = FIXTURES / "xml"
+
+    def land_index(self, zone, *rows: str) -> None:
+        zone.land_index(self.FILED, (HEADER + "".join(rows)).encode())
+
+    def land_report(self, zone, cover: bytes | None = None, table: bytes | None = None) -> None:
+        accession = self.REPORT_ACCESSION
+        cover = cover or (self.XML / f"hr-{accession}-primary_doc.xml").read_bytes()
+        table = table or (self.XML / f"hr-{accession}-infotable.xml").read_bytes()
+        zone._put(primary_doc_key(self.FILED, accession), cover, "application/xml", {})
+        zone._put(info_table_key(self.FILED, accession), table, "application/xml", {})
+
+    def land_notice(self, zone) -> None:
+        accession = self.NOTICE_ACCESSION
+        cover = (self.XML / f"nt-{accession}-primary_doc.xml").read_bytes()
+        zone._put(primary_doc_key(self.FILED, accession), cover, "application/xml", {})
+
+    def lines(self, zone, accession: str) -> list[dict]:
+        data = zone.read(parsed_key(self.FILED, accession))
+        return [json.loads(line) for line in data.decode().splitlines()]
+
+    def test_each_landed_filing_becomes_one_json_lines_file(self, zone):
+        self.land_index(zone, self.REPORT, self.NOTICE)
+        self.land_report(zone)
+        self.land_notice(zone)
+
+        result = walk.parse_batch(zone, self.KEY, 0, 2)
+
+        assert result == {
+            "parsed": [self.REPORT_ACCESSION, self.NOTICE_ACCESSION],
+            "parse_present": [],
+            "not_landed": [],
+            "parse_failed": [],
+            "reconcile_gaps": [],
+        }
+        assert len(self.lines(zone, self.REPORT_ACCESSION)) == 1 + 91
+        assert len(self.lines(zone, self.NOTICE_ACCESSION)) == 1
+
+    def test_a_rerun_writes_nothing(self, zone, s3):
+        self.land_index(zone, self.REPORT, self.NOTICE)
+        self.land_report(zone)
+        self.land_notice(zone)
+        walk.parse_batch(zone, self.KEY, 0, 2)
+
+        result = walk.parse_batch(zone, self.KEY, 0, 2)
+
+        assert result["parsed"] == []
+        assert result["parse_present"] == [self.REPORT_ACCESSION, self.NOTICE_ACCESSION]
+        for accession in (self.REPORT_ACCESSION, self.NOTICE_ACCESSION):
+            key = parsed_key(self.FILED, accession)
+            assert len(s3.list_object_versions(Bucket=BUCKET, Prefix=key)["Versions"]) == 1
+
+    def test_a_filing_not_yet_landed_is_left_for_the_run_that_lands_it(self, zone):
+        self.land_index(zone, self.REPORT)
+
+        result = walk.parse_batch(zone, self.KEY, 0, 1)
+
+        assert result["not_landed"] == [self.REPORT_ACCESSION]
+        assert not zone.exists(parsed_key(self.FILED, self.REPORT_ACCESSION))
+
+    def test_a_malformed_table_writes_nothing_and_is_recorded(self, zone):
+        self.land_index(zone, self.REPORT)
+        self.land_report(zone, table=b"<informationTable><infoTable>")
+
+        result = walk.parse_batch(zone, self.KEY, 0, 1)
+
+        assert result["parsed"] == []
+        assert result["parse_failed"][0]["accession"] == self.REPORT_ACCESSION
+        assert result["parse_failed"][0]["form_type"] == "13F-HR"
+        assert result["parse_failed"][0]["error"].startswith("XmlParseError: ")
+        assert not zone.exists(parsed_key(self.FILED, self.REPORT_ACCESSION))
+
+    def test_a_malformed_date_is_recorded_not_raised(self, zone):
+        cover = (self.XML / f"hr-{self.REPORT_ACCESSION}-primary_doc.xml").read_bytes()
+        broken = cover.replace(b"<periodOfReport>09-30-2025<", b"<periodOfReport>30/09/2025<")
+        self.land_index(zone, self.REPORT)
+        self.land_report(zone, cover=broken)
+
+        result = walk.parse_batch(zone, self.KEY, 0, 1)
+
+        assert result["parse_failed"][0]["error"].startswith("ValueError: ")
+
+    def test_a_table_off_its_own_totals_is_written_and_recorded(self, zone):
+        cover = (self.XML / f"hr-{self.REPORT_ACCESSION}-primary_doc.xml").read_bytes()
+        off = cover.replace(b"<tableEntryTotal>91<", b"<tableEntryTotal>90<")
+        self.land_index(zone, self.REPORT)
+        self.land_report(zone, cover=off)
+
+        result = walk.parse_batch(zone, self.KEY, 0, 1)
+
+        assert result["parsed"] == [self.REPORT_ACCESSION]
+        gap = result["reconcile_gaps"][0]
+        assert gap["accession"] == self.REPORT_ACCESSION
+        assert (gap["table_entry_total"], gap["holdings_count"]) == (90, 91)
+
+    def test_slices_the_index_by_the_given_range(self, zone):
+        self.land_index(zone, self.REPORT, self.NOTICE)
+        self.land_notice(zone)
+
+        result = walk.parse_batch(zone, self.KEY, 1, 2)
+
+        assert result["parsed"] == [self.NOTICE_ACCESSION]
+        assert result["not_landed"] == []
+
+
 class TestAuditRecord:
     def test_sums_across_batches_and_keeps_each_day_once(self):
         plan = {"day": "2026-09-22", "published": True, "sweep": ["2026-09-21"]}
@@ -306,7 +418,7 @@ class TestAuditRecord:
             },
         ]
 
-        record = walk.audit_record(plan, results, "scheduled__2026-09-23T06:00:00+00:00", "now")
+        record = walk.audit_record(plan, results, [], "scheduled__2026-09-23T06:00:00+00:00", "now")
 
         assert record["discovered"] == 153
         assert record["landed"] == 140
@@ -320,6 +432,42 @@ class TestAuditRecord:
     def test_an_empty_run_is_still_a_record(self):
         plan = {"day": "2026-09-20", "published": False, "sweep": []}
 
-        record = walk.audit_record(plan, [], "manual__x", "now")
+        record = walk.audit_record(plan, [], [], "manual__x", "now")
 
         assert record["discovered"] == 0 and record["batches"] == 0 and record["days"] == {}
+        assert record["parsed"] == 0 and record["parse_failed"] == []
+
+    def test_counts_what_parsed_and_lists_failures_and_gaps(self):
+        plan = {"day": "2026-09-22", "published": True, "sweep": []}
+        failure = {"accession": "e", "form_type": "13F-HR", "error": "XmlParseError: x"}
+        gap = {
+            "accession": "a",
+            "table_entry_total": 2,
+            "holdings_count": 3,
+            "table_value_total": 10,
+            "value_sum": 10,
+        }
+        parse_results = [
+            {
+                "parsed": ["a", "b"],
+                "parse_present": ["c"],
+                "not_landed": ["d"],
+                "parse_failed": [failure],
+                "reconcile_gaps": [gap],
+            },
+            {
+                "parsed": ["f"],
+                "parse_present": [],
+                "not_landed": [],
+                "parse_failed": [],
+                "reconcile_gaps": [],
+            },
+        ]
+
+        record = walk.audit_record(plan, [], parse_results, "manual__x", "now")
+
+        assert record["parsed"] == 3
+        assert record["parsed_already_present"] == 1
+        assert record["not_landed"] == 1
+        assert record["parse_failed"] == [failure]
+        assert record["reconcile_gaps"] == [gap]

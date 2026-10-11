@@ -32,6 +32,7 @@ def test_every_edgar_calling_task_is_in_the_one_slot_pool(dag):
         "plan_walk": "edgar",
         "land_indexes": "edgar",
         "walk_batch": "edgar",
+        "parse_batch": "default_pool",
         "record_audit": "default_pool",
     }
 
@@ -53,5 +54,6 @@ def test_task_graph(dag):
 
     assert downstream["plan_walk"] == ["land_indexes", "record_audit"]
     assert downstream["land_indexes"] == ["walk_batch"]
-    assert downstream["walk_batch"] == ["record_audit"]
+    assert downstream["walk_batch"] == ["parse_batch", "record_audit"]
+    assert downstream["parse_batch"] == ["record_audit"]
     assert downstream["record_audit"] == []
