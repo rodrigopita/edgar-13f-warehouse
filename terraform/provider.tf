@@ -29,4 +29,8 @@ provider "snowflake" {
   authenticator          = "SNOWFLAKE_JWT"
   private_key            = file(pathexpand(var.snowflake_private_key_path))
   private_key_passphrase = var.snowflake_private_key_passphrase
+
+  # snowflake_pipe is a preview resource in 2.x; the exact version pin in
+  # versions.tf is what keeps it from changing under a provider upgrade.
+  preview_features_enabled = ["snowflake_pipe_resource"]
 }
