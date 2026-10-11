@@ -44,8 +44,16 @@ from per_file;
 
 A second query found no file without exactly one cover page on its first row. `EDGAR_WH` was suspended after the queries.
 
+## The whole walk
+
+The runs that walk 2026-09-01 to 2026-10-09 were then cleared the same way and ran one at a time.
+
+- **719 filings parsed and loaded.** Every filing the walk landed from 2026-09-01 to 2026-10-09 has its JSON-lines file. `RAW.PARSED_FILINGS` holds 719 files, 719 cover pages and 192,129 holdings, and the 719 files in S3 hold the same 192,848 lines.
+- **No filing failed to parse.** Every audit record with parse counts reads `parse_failed: []`.
+- **23 reconcile gaps, all loaded.** Ten filings report an entry count that differs from their table, six a value total off by 5 or less, three a value total off in no simple pattern, and four a value total 10, 100 or 1,000 times apart from their rows' sum. One of those, `0001439805-26-000006`, states 4,353,137 against rows summing to 4,353: its total is in dollars and its rows in thousands. These are the cases the core layer has to resolve.
+- **Two runs needed care.** The run that walks 2026-10-02 is a manual run from the cp1 catchup, not a scheduled one, so it was cleared on its own. A leftover run with logical date 2026-09-01, from before the start date moved, walks 2026-08-31: it landed that day's five filings and, cleared twice, never ran `parse_batch`. 2026-08-31 is before the walk's start and inside the last data set, so those five stay unparsed.
+
 ## What it does not show
 
 - **A filing wave.** The trial ends on 2026-11-08, before the mid-November wave of Q3 filings, so the path is proven on a weekday of late filers and amendments, not on the 2,600 filings of a wave day.
-- **A scheduled run.** The run was a cleared rerun of a past day. The scheduled runs from 2026-10-13 on parse what they land with the same code, and their audit records will show it.
-- **The other days.** On 2026-10-11 only 2026-10-08 is parsed; the filings landed since 2026-09-01 are parsed next, by clearing their runs.
+- **A scheduled run.** Every run here was a cleared rerun of a past day. The scheduled runs from 2026-10-13 on parse what they land with the same code, and their audit records will show it.
