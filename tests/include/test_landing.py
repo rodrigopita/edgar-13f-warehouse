@@ -9,6 +9,9 @@ from include.edgar_filing import PRIMARY_DOC, FilingBytes, FilingDocuments
 from include.edgar_index import IndexEntry
 from include.landing import (
     LandingZone,
+    backfill_audit_key,
+    dataset_zip_key,
+    extracted_key,
     filing_prefix,
     index_key,
     info_table_key,
@@ -198,3 +201,34 @@ def test_exists_is_false_before_and_true_after_landing(zone):
     assert not zone.exists(key)
     zone.land_index(date(2026, 9, 22), b"x")
     assert zone.exists(key)
+
+
+class TestDatasets:
+    def test_keys_put_zips_under_raw_and_tables_under_extracted_by_table(self):
+        assert dataset_zip_key("2013q2_form13f.zip") == "raw/sec/datasets/2013q2_form13f.zip"
+        assert (
+            extracted_key("INFOTABLE", "2013q2")
+            == "extracted/sec/datasets/table=INFOTABLE/2013q2.tsv.gz"
+        )
+        assert (
+            backfill_audit_key("manual__2026-10-12T10:00:00+00:00")
+            == "raw/sec/audit/backfill/manual__2026-10-12T10-00-00-00-00.json"
+        )
+
+    def test_land_extracted_keeps_the_row_count_as_metadata(self, zone, s3):
+        landed = zone.land_extracted("SUBMISSION", "2013q2", b"\x1f\x8bgz", 166)
+
+        assert stored(s3, landed.key) == {
+            "body": b"\x1f\x8bgz",
+            "type": "application/gzip",
+            "meta": {"dataset": "2013q2", "table": "SUBMISSION", "rows": "166"},
+        }
+
+    def test_land_dataset_zip_stores_the_bytes_as_fetched(self, zone, s3):
+        landed = zone.land_dataset_zip("2013q2_form13f.zip", b"PK\x03\x04")
+
+        assert stored(s3, landed.key)["body"] == b"PK\x03\x04"
+        assert stored(s3, landed.key)["type"] == "application/zip"
+
+    def test_metadata_is_none_for_a_missing_key(self, zone):
+        assert zone.metadata(extracted_key("SUBMISSION", "2013q2")) is None

@@ -5,7 +5,14 @@ from pathlib import Path
 import pytest
 
 from include.edgar_client import EdgarClient
-from include.sec_datasets import Dataset, DatasetNameError, download, list_datasets, parse_dataset
+from include.sec_datasets import (
+    Dataset,
+    DatasetNameError,
+    download,
+    fetch,
+    list_datasets,
+    parse_dataset,
+)
 from tests.fakes import FakeResponse
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "edgar"
@@ -124,3 +131,22 @@ class TestDownload:
             download(client, self.DATASET, tmp_path)
 
         assert list(tmp_path.iterdir()) == []
+
+
+class TestFetch:
+    DATASET = Dataset(date(2013, 4, 1), date(2013, 6, 30), "2013q2_form13f.zip", OLD)
+    URL = "https://www.sec.gov" + OLD
+
+    def test_returns_the_body_after_one_head(self, client, session):
+        session.queue(
+            FakeResponse(200, headers={"Content-Length": "5"}), FakeResponse(200, b"zip!!")
+        )
+
+        assert fetch(client, self.DATASET) == b"zip!!"
+        assert session.calls == [f"HEAD {self.URL}", self.URL]
+
+    def test_a_truncated_body_is_refused(self, client, session):
+        session.queue(FakeResponse(200, headers={"Content-Length": "5"}), FakeResponse(200, b"zi"))
+
+        with pytest.raises(OSError, match="got 2 bytes, Content-Length said 5"):
+            fetch(client, self.DATASET)

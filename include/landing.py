@@ -10,6 +10,10 @@ client built from the Airflow connection.
 Parsed JSON lines sit beside the raw bytes under parsed/: derived from the
 landed XML, never fetched, and keyed the same way. A new file there is what
 the bucket notification hands to Snowpipe.
+
+The SEC data set zips land under raw/sec/datasets/ as fetched; their tables,
+re-compressed as gzip for COPY, go under extracted/sec/datasets/ with the row
+count each holds as object metadata.
 """
 
 import json
@@ -26,6 +30,9 @@ INDEX_PREFIX = "raw/edgar/index"
 FILINGS_PREFIX = "raw/edgar/filings"
 AUDIT_PREFIX = "raw/edgar/audit/walk"
 PARSED_PREFIX = "parsed/edgar/filings"
+DATASETS_PREFIX = "raw/sec/datasets"
+EXTRACTED_PREFIX = "extracted/sec/datasets"
+BACKFILL_AUDIT_PREFIX = "raw/sec/audit/backfill"
 PRIMARY_DOC_NAME = "primary_doc.xml"
 # The filer chooses the information table's file name. It is stored under one
 # fixed name, and the original is kept as object metadata.
@@ -55,8 +62,25 @@ def parsed_key(filed: date, accession: str) -> str:
 
 def audit_key(day: date, run_id: str) -> str:
     """One audit record per DAG run, under the day the run was for."""
-    safe_run_id = re.sub(r"[^A-Za-z0-9_.-]", "-", run_id)
-    return f"{AUDIT_PREFIX}/day={day.isoformat()}/{safe_run_id}.json"
+    return f"{AUDIT_PREFIX}/day={day.isoformat()}/{_safe(run_id)}.json"
+
+
+def dataset_zip_key(name: str) -> str:
+    """A data set zip under the name the SEC gives it, such as 2013q2_form13f.zip."""
+    return f"{DATASETS_PREFIX}/{name}"
+
+
+def extracted_key(table: str, dataset: str) -> str:
+    """One gzip per table and data set, grouped by table so one COPY reads a folder."""
+    return f"{EXTRACTED_PREFIX}/table={table}/{dataset}.tsv.gz"
+
+
+def backfill_audit_key(run_id: str) -> str:
+    return f"{BACKFILL_AUDIT_PREFIX}/{_safe(run_id)}.json"
+
+
+def _safe(run_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "-", run_id)
 
 
 @dataclass(frozen=True)
@@ -118,19 +142,37 @@ class LandingZone:
         data = json.dumps(record, sort_keys=True, default=str).encode()
         return self._put(audit_key(day, run_id), data, "application/json", {"run-id": run_id})
 
+    def land_dataset_zip(self, name: str, data: bytes) -> Landed:
+        """Store a data set zip as fetched from the SEC."""
+        return self._put(dataset_zip_key(name), data, "application/zip", {"source": name})
+
+    def land_extracted(self, table: str, dataset: str, data: bytes, rows: int) -> Landed:
+        """Store one table of one data set as gzip, with its row count as metadata."""
+        metadata = {"dataset": dataset, "table": table, "rows": str(rows)}
+        return self._put(extracted_key(table, dataset), data, "application/gzip", metadata)
+
+    def land_backfill_audit(self, run_id: str, record: dict) -> Landed:
+        """Store one backfill run's audit record as JSON."""
+        data = json.dumps(record, sort_keys=True, default=str).encode()
+        return self._put(backfill_audit_key(run_id), data, "application/json", {"run-id": run_id})
+
     def read(self, key: str) -> bytes:
         """Bytes of a landed object. Needs only s3:GetObject."""
         return self._s3.get_object(Bucket=self.bucket, Key=key)["Body"].read()
 
     def exists(self, key: str) -> bool:
         """Whether the key has a current version. Needs only s3:GetObject."""
+        return self.metadata(key) is not None
+
+    def metadata(self, key: str) -> dict[str, str] | None:
+        """The object's user metadata, or None when the key has no current version."""
         try:
-            self._s3.head_object(Bucket=self.bucket, Key=key)
+            response = self._s3.head_object(Bucket=self.bucket, Key=key)
         except ClientError as exc:
             if exc.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
-                return False
+                return None
             raise
-        return True
+        return response["Metadata"]
 
     def _put(self, key: str, data: bytes, content_type: str, metadata: dict[str, str]) -> Landed:
         response = self._s3.put_object(

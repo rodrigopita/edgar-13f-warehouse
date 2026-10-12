@@ -3,8 +3,9 @@
 The SEC publishes one zip per filing-date window with seven tab-separated
 tables extracted from every 13F submission. This module lists them from the
 datasets page and downloads them, skipping complete copies; sec_profile reads them and
-sec_cli drives both. Historical backfill comes from these files and nothing
-else; the XML path begins where the newest of them ends.
+sec_cli drives both. fetch hands one zip to sec_backfill in memory. Historical
+backfill comes from these files and nothing else; the XML path begins where the
+newest of them ends.
 """
 
 import logging
@@ -97,16 +98,30 @@ def download(client: EdgarClient, dataset: Dataset, dest: Path = DEFAULT_DEST) -
     """
     dest.mkdir(parents=True, exist_ok=True)
     target = dest / dataset.name
-    expected = int(client.head(dataset.url).get("Content-Length", "0"))
+    expected = _content_length(client, dataset)
     if target.exists() and expected and target.stat().st_size == expected:
         logger.info("%s already complete (%d bytes), skipping", dataset.name, expected)
         return target
     started = time.monotonic()
-    data = client.get(dataset.url)
-    if expected and len(data) != expected:
-        raise OSError(f"{dataset.name}: got {len(data)} bytes, Content-Length said {expected}")
+    data = _checked_get(client, dataset, expected)
     partial = target.with_suffix(".part")
     partial.write_bytes(data)
     os.replace(partial, target)
     logger.info("%s: %d bytes in %.1f s", dataset.name, len(data), time.monotonic() - started)
     return target
+
+
+def fetch(client: EdgarClient, dataset: Dataset) -> bytes:
+    """The zip's bytes in memory, refused if the body and Content-Length disagree."""
+    return _checked_get(client, dataset, _content_length(client, dataset))
+
+
+def _content_length(client: EdgarClient, dataset: Dataset) -> int:
+    return int(client.head(dataset.url).get("Content-Length", "0"))
+
+
+def _checked_get(client: EdgarClient, dataset: Dataset, expected: int) -> bytes:
+    data = client.get(dataset.url)
+    if expected and len(data) != expected:
+        raise OSError(f"{dataset.name}: got {len(data)} bytes, Content-Length said {expected}")
+    return data
