@@ -259,3 +259,28 @@ class TestAuditRecord:
         )
 
         assert record["not_loaded"] == [failed]
+
+
+class TestReconcileSql:
+    PROFILES = (
+        {"name": "2013q3_form13f.zip", "rows": dict.fromkeys(TABLES, 4)},
+        {"name": "2013q2_form13f.zip", "rows": dict.fromkeys(TABLES, 3) | {"INFOTABLE": 87715}},
+    )
+
+    def test_expects_every_table_of_every_profile_oldest_first(self):
+        sql = sec_backfill.reconcile_sql(list(self.PROFILES))
+
+        assert "('2013q2', 'INFOTABLE', 87715)" in sql
+        assert "('2013q3', 'SUMMARYPAGE', 4)" in sql
+        assert sql.index("('2013q2', 'SUBMISSION'") < sql.index("('2013q3', 'SUBMISSION'")
+        # Each of the two queries carries its own list: two profiles, seven tables each.
+        assert sql.count("        ('2013q") == 2 * 2 * len(TABLES)
+
+    def test_counts_every_raw_table_by_file_and_returns_only_differences(self):
+        sql = sec_backfill.reconcile_sql(list(self.PROFILES))
+
+        for table in TABLES:
+            assert f"from edgar_13f.raw.dataset_{table.lower()} group by file_name" in sql
+        assert "full outer join loaded l" in sql
+        assert "where expected_rows is distinct from loaded_rows" in sql
+        assert sql.count(";") == 2

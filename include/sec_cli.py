@@ -1,7 +1,8 @@
-"""Command line for the SEC 13F data sets: list, download, profile.
+"""Command line for the SEC 13F data sets: list, download, profile, reconcile-sql.
 
 Run from the repo root with the contact address in the environment:
-`uv run --env-file .env python -m include.sec_cli <command>`.
+`uv run --env-file .env python -m include.sec_cli <command>`. reconcile-sql reads
+only data/profile/ and needs neither the environment nor the network.
 """
 
 import argparse
@@ -11,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from include import sec_profile
+from include import sec_backfill, sec_profile
 from include.edgar_client import EdgarClient
 from include.sec_datasets import DEFAULT_DEST, download, list_datasets
 
@@ -42,7 +43,17 @@ def main(argv: list[str] | None = None) -> None:
     pr.add_argument("--dest", type=Path, default=DEFAULT_DEST)
     pr.add_argument("--out", type=Path, default=DEFAULT_PROFILE_OUT)
     pr.add_argument("--only", help="substring of a name, to profile a subset")
+    rc = sub.add_parser(
+        "reconcile-sql",
+        help="print the SQL that checks the loaded raw tables against the profiles in --out",
+    )
+    rc.add_argument("--out", type=Path, default=DEFAULT_PROFILE_OUT)
     args = parser.parse_args(argv)
+
+    if args.command == "reconcile-sql":
+        paths = sorted(args.out.glob("*_form13f.json"))
+        print(sec_backfill.reconcile_sql([json.loads(path.read_text()) for path in paths]))
+        return
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     client = client_from_env()
