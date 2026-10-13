@@ -32,6 +32,7 @@ AUDIT_PREFIX = "raw/edgar/audit/walk"
 PARSED_PREFIX = "parsed/edgar/filings"
 DATASETS_PREFIX = "raw/sec/datasets"
 EXTRACTED_PREFIX = "extracted/sec/datasets"
+EXTRACTED_SUFFIX = ".tsv.gz"
 BACKFILL_AUDIT_PREFIX = "raw/sec/audit/backfill"
 PRIMARY_DOC_NAME = "primary_doc.xml"
 # The filer chooses the information table's file name. It is stored under one
@@ -70,9 +71,9 @@ def dataset_zip_key(name: str) -> str:
     return f"{DATASETS_PREFIX}/{name}"
 
 
-def extracted_key(table: str, dataset: str) -> str:
+def extracted_key(table: str, dataset_id: str) -> str:
     """One gzip per table and data set, grouped by table so one COPY reads a folder."""
-    return f"{EXTRACTED_PREFIX}/table={table}/{dataset}.tsv.gz"
+    return f"{EXTRACTED_PREFIX}/table={table}/{dataset_id}{EXTRACTED_SUFFIX}"
 
 
 def backfill_audit_key(run_id: str) -> str:
@@ -139,22 +140,20 @@ class LandingZone:
 
     def land_audit(self, day: date, run_id: str, record: dict) -> Landed:
         """Store one run's audit record as JSON. The pipeline writes its own audit."""
-        data = json.dumps(record, sort_keys=True, default=str).encode()
-        return self._put(audit_key(day, run_id), data, "application/json", {"run-id": run_id})
+        return self._put_json(audit_key(day, run_id), record, run_id)
 
     def land_dataset_zip(self, name: str, data: bytes) -> Landed:
         """Store a data set zip as fetched from the SEC."""
         return self._put(dataset_zip_key(name), data, "application/zip", {"source": name})
 
-    def land_extracted(self, table: str, dataset: str, data: bytes, rows: int) -> Landed:
+    def land_extracted(self, table: str, dataset_id: str, data: bytes, rows: int) -> Landed:
         """Store one table of one data set as gzip, with its row count as metadata."""
-        metadata = {"dataset": dataset, "table": table, "rows": str(rows)}
-        return self._put(extracted_key(table, dataset), data, "application/gzip", metadata)
+        metadata = {"dataset": dataset_id, "table": table, "rows": str(rows)}
+        return self._put(extracted_key(table, dataset_id), data, "application/gzip", metadata)
 
     def land_backfill_audit(self, run_id: str, record: dict) -> Landed:
         """Store one backfill run's audit record as JSON."""
-        data = json.dumps(record, sort_keys=True, default=str).encode()
-        return self._put(backfill_audit_key(run_id), data, "application/json", {"run-id": run_id})
+        return self._put_json(backfill_audit_key(run_id), record, run_id)
 
     def read(self, key: str) -> bytes:
         """Bytes of a landed object. Needs only s3:GetObject."""
@@ -173,6 +172,10 @@ class LandingZone:
                 return None
             raise
         return response["Metadata"]
+
+    def _put_json(self, key: str, record: dict, run_id: str) -> Landed:
+        data = json.dumps(record, sort_keys=True, default=str).encode()
+        return self._put(key, data, "application/json", {"run-id": run_id})
 
     def _put(self, key: str, data: bytes, content_type: str, metadata: dict[str, str]) -> Landed:
         response = self._s3.put_object(

@@ -29,5 +29,11 @@ create table if not exists edgar_13f.raw.parsed_filings (
 row_timestamp = true
 comment = 'Cover pages and holdings parsed from EDGAR 13F XML, one JSON line per row';
 
--- Check: LOADER and TERRAFORM hold SELECT and INSERT through the future grants.
+-- PARSED_FILINGS_PIPE, which Terraform owns, loads this table with its
+-- owner's privileges: TERRAFORM gets SELECT and INSERT here and on no other
+-- table. LOADER has both through the future grant from 02.
+use role securityadmin;
+grant select, insert on table edgar_13f.raw.parsed_filings to role terraform;
+
+-- Check: LOADER and TERRAFORM hold SELECT and INSERT on the table.
 show grants on table edgar_13f.raw.parsed_filings;

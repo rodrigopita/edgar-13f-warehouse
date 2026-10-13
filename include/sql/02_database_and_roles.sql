@@ -32,14 +32,13 @@ grant usage on schema edgar_13f.audit to role loader;
 grant select, insert on future tables in schema edgar_13f.raw to role loader;
 grant select, insert on future tables in schema edgar_13f.audit to role loader;
 
--- 3. Terraform creates the file format, stage and pipe in RAW and owns them.
---    Snowpipe loads with the privileges of the pipe's owner, so TERRAFORM
---    also selects from and inserts into RAW tables; that is the only data it
---    can touch.
+-- 3. Terraform creates the stages and the pipe in RAW and owns them; their
+--    file formats are inline. Snowpipe loads with the privileges of the
+--    pipe's owner, so 03 grants TERRAFORM SELECT and INSERT on the one table
+--    its pipe loads, and nothing else in RAW.
 grant usage on database edgar_13f to role terraform;
 grant usage on schema edgar_13f.raw to role terraform;
-grant create file format, create stage, create pipe on schema edgar_13f.raw to role terraform;
-grant select, insert on future tables in schema edgar_13f.raw to role terraform;
+grant create stage, create pipe on schema edgar_13f.raw to role terraform;
 
 -- 4. Check: both roles hold what sections 2 and 3 grant.
 show grants to role loader;

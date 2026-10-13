@@ -17,7 +17,7 @@ from pathlib import PurePosixPath
 from typing import BinaryIO
 
 from include.edgar_client import EdgarClient
-from include.landing import LandingZone, dataset_zip_key, extracted_key
+from include.landing import EXTRACTED_SUFFIX, LandingZone, dataset_zip_key, extracted_key
 from include.sec_datasets import Dataset, fetch
 from include.sec_profile import TABLES
 
@@ -120,9 +120,9 @@ class DatasetLayoutError(ValueError):
     """A zip lacks one of the seven tables, or a table's header is not the expected one."""
 
 
-def dataset_id(dataset: Dataset) -> str:
+def dataset_id(zip_name: str) -> str:
     """2013q2 for 2013q2_form13f.zip: the name a zip's extracted files carry."""
-    return dataset.name.removesuffix(ZIP_SUFFIX)
+    return zip_name.removesuffix(ZIP_SUFFIX)
 
 
 def stage_dataset(client: EdgarClient, zone: LandingZone, dataset: Dataset) -> dict:
@@ -133,8 +133,8 @@ def stage_dataset(client: EdgarClient, zone: LandingZone, dataset: Dataset) -> d
     the row counts come back from the files' metadata. A zip already landed is
     read from S3 rather than fetched again.
     """
-    ident = dataset_id(dataset)
-    found = {table: zone.metadata(extracted_key(table, ident)) for table in TABLES}
+    set_id = dataset_id(dataset.name)
+    found = {table: zone.metadata(extracted_key(table, set_id)) for table in TABLES}
     if all(meta is not None for meta in found.values()):
         rows = {table: int(meta["rows"]) for table, meta in found.items()}
         return {"dataset": dataset.name, "source": "extracted", "rows": rows}
@@ -153,7 +153,7 @@ def stage_dataset(client: EdgarClient, zone: LandingZone, dataset: Dataset) -> d
                 raise DatasetLayoutError(f"{dataset.name}: no {table}.tsv")
             with archive.open(member) as stream:
                 compressed, count = gzip_table(stream, table, dataset.name)
-            zone.land_extracted(table, ident, compressed, count)
+            zone.land_extracted(table, set_id, compressed, count)
             rows[table] = count
     return {"dataset": dataset.name, "source": source, "rows": rows}
 
@@ -223,13 +223,13 @@ def audit_record(staged: list[dict], copies: list[dict], run_id: str, recorded_a
     loaded: dict[tuple[str, str], dict] = {}
     for copy in copies:
         for result in copy["results"]:
-            ident = PurePosixPath(result["file"]).name.removesuffix(".tsv.gz")
-            loaded[(copy["table"], ident)] = result
+            set_id = PurePosixPath(result["file"]).name.removesuffix(EXTRACTED_SUFFIX)
+            loaded[(copy["table"], set_id)] = result
     mismatches = []
     for stage in staged:
-        ident = stage["dataset"].removesuffix(ZIP_SUFFIX)
+        set_id = dataset_id(stage["dataset"])
         for table, extracted in stage["rows"].items():
-            result = loaded.get((table, ident))
+            result = loaded.get((table, set_id))
             if result is not None and result["rows_loaded"] != extracted:
                 mismatches.append(
                     {
@@ -265,7 +265,7 @@ def reconcile_sql(profiles: list[dict]) -> str:
     data/profile/<name>.json documents the cp1 profile wrote.
     """
     expected = ",\n".join(
-        f"        ('{prof['name'].removesuffix(ZIP_SUFFIX)}', '{table}', {prof['rows'][table]})"
+        f"        ('{dataset_id(prof['name'])}', '{table}', {prof['rows'][table]})"
         for prof in sorted(profiles, key=lambda p: p["name"])
         for table in TABLES
     )
@@ -280,12 +280,12 @@ def reconcile_sql(profiles: list[dict]) -> str:
         f"    select * from values\n{expected}\n),\n"
         f"loaded as (\n{loaded}\n),\n"
         "compared as (\n"
-        "    select coalesce(e.dataset, replace(l.file_name, '.tsv.gz', '')) as dataset,\n"
+        f"    select coalesce(e.dataset, replace(l.file_name, '{EXTRACTED_SUFFIX}', '')) as dataset,\n"
         "           coalesce(e.table_name, l.table_name) as table_name,\n"
         "           e.expected_rows, l.loaded_rows\n"
         "    from expected e\n"
         "    full outer join loaded l\n"
-        "        on l.table_name = e.table_name and l.file_name = e.dataset || '.tsv.gz'\n"
+        f"        on l.table_name = e.table_name and l.file_name = e.dataset || '{EXTRACTED_SUFFIX}'\n"
         ")\n"
     )
     header = (

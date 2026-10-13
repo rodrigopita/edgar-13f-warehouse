@@ -80,7 +80,7 @@ class TestFilingLines:
         assert data.count(b"\n") == 1 + len(holdings)
 
     def test_non_ascii_names_stay_as_written_in_utf8(self):
-        cover, _ = report()
+        cover = report()[0]
         renamed = cover.model_copy(update={"filing_manager_name": "Société Générale"})
 
         data = filing_lines(renamed, COVER_KEY, [], None)

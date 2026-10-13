@@ -132,7 +132,7 @@ class TestStageDataset:
 
 class TestGzipTable:
     def test_counts_data_rows_not_the_header(self):
-        _, rows = sec_backfill.gzip_table(io.BytesIO(tsv("SUBMISSION", 5)), "SUBMISSION", "z")
+        rows = sec_backfill.gzip_table(io.BytesIO(tsv("SUBMISSION", 5)), "SUBMISSION", "z")[1]
 
         assert rows == 5
 
@@ -145,15 +145,15 @@ class TestGzipTable:
         assert gzip.decompress(compressed) == data
 
     def test_a_header_only_table_has_no_rows(self):
-        _, rows = sec_backfill.gzip_table(
+        rows = sec_backfill.gzip_table(
             io.BytesIO(header("SUMMARYPAGE").encode()), "SUMMARYPAGE", "z"
-        )
+        )[1]
 
         assert rows == 0
 
     def test_the_same_table_gives_the_same_bytes_with_no_time_in_the_header(self):
-        first, _ = sec_backfill.gzip_table(io.BytesIO(tsv("INFOTABLE", 50)), "INFOTABLE", "z")
-        second, _ = sec_backfill.gzip_table(io.BytesIO(tsv("INFOTABLE", 50)), "INFOTABLE", "z")
+        first = sec_backfill.gzip_table(io.BytesIO(tsv("INFOTABLE", 50)), "INFOTABLE", "z")[0]
+        second = sec_backfill.gzip_table(io.BytesIO(tsv("INFOTABLE", 50)), "INFOTABLE", "z")[0]
 
         assert first == second
         assert first[4:8] == b"\x00\x00\x00\x00"
