@@ -53,7 +53,16 @@ The runs that walk 2026-09-01 to 2026-10-09 were then cleared the same way and r
 - **23 reconcile gaps, all loaded.** Ten filings report an entry count that differs from their table, six a value total off by 5 or less, three a value total off in no simple pattern, and four a value total 10, 100 or 1,000 times apart from their rows' sum. One of those, `0001439805-26-000006`, states 4,353,137 against rows summing to 4,353: its total is in dollars and its rows in thousands. These are the cases the core layer has to resolve.
 - **Two runs needed care.** The run that walks 2026-10-02 is a manual run from the cp1 catchup, not a scheduled one, so it was cleared on its own. A leftover run with logical date 2026-09-01, from before the start date moved, walks 2026-08-31: it landed that day's five filings and, cleared twice, never ran `parse_batch`. 2026-08-31 is before the walk's start and inside the last data set, so those five stay unparsed.
 
+## A scheduled run
+
+The run scheduled for 2026-10-14 06:00 UTC walked 2026-10-13 with no step by hand. Airflow started it at 10:50 UTC rather than 06:00; the laptop it runs on was asleep at 06:00, and the scheduler started the run when it woke.
+
+- **344 filings landed, 342 loaded.** The index listed 344 and all of them landed. 342 parsed into one file each, and Snowpipe loaded all 342: 342 cover pages and 67,543 holdings, 16 seconds at best and 95 at worst from the S3 write to the row commit, 40 at the median.
+- **Two notices did not parse.** `0001758171-26-000005` and `0001510483-26-000007` are 13F-NT notices that carry a summary page, which the parser refuses ("a notice has no summary page"). They are in the run's audit record and not in the table. Eleven filings disagree with their own totals and loaded as designed.
+- **A restarted batch cost nothing.** 84 filings were already in S3 when the final attempt of their batch ran, because an earlier attempt had landed them. The final attempt skipped them and none was fetched twice.
+
+The counts come from the timing query above with `where source_file like 'parsed/edgar/filings/filed=2026-10-13/%'`: `source_file` holds the path from the bucket root.
+
 ## What it does not show
 
 - **A filing wave.** The trial ends on 2026-11-08, before the mid-November wave of Q3 filings, so the path is proven on a weekday of late filers and amendments, not on the 2,600 filings of a wave day.
-- **A scheduled run.** Every run here was a cleared rerun of a past day. The scheduled runs from 2026-10-13 on parse what they land with the same code, and their audit records will show it.
