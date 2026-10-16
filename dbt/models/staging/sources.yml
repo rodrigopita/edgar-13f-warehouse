@@ -1,0 +1,34 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Records as loaded from the landing bucket, in EDGAR_13F.RAW. The seven
+      data set tables hold the SEC 13F data sets as text, with the data sets'
+      own column names; parsed_filings holds the cover pages and holdings the
+      daily walk parses from EDGAR XML, one JSON line per row. Every table
+      ends with the same four source columns naming the file and line a row
+      came from.
+    database: edgar_13f
+    schema: raw
+    tables:
+      - name: parsed_filings
+        description: >
+          One row per JSON line under parsed/: an envelope of record_type,
+          accession, source_key and the parsed record. A file loads whole or
+          not at all, so a filing's cover page and holdings share a
+          source_file.
+      - name: dataset_submission
+        description: SUBMISSION.tsv, one row per filing in the data sets.
+      - name: dataset_coverpage
+        description: COVERPAGE.tsv, one row per filing with the amendment fields.
+      - name: dataset_othermanager
+        description: OTHERMANAGER.tsv, the other managers a filing reports for.
+      - name: dataset_othermanager2
+        description: OTHERMANAGER2.tsv, the other managers included in a filing.
+      - name: dataset_infotable
+        description: INFOTABLE.tsv, one row per holding.
+      - name: dataset_signature
+        description: SIGNATURE.tsv, the signature block of a filing.
+      - name: dataset_summarypage
+        description: SUMMARYPAGE.tsv, the totals a holdings report declares.

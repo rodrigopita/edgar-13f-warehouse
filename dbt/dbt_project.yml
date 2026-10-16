@@ -1,0 +1,24 @@
+# The dbt project. The profile named here lives in ~/.dbt/profiles.yml,
+# outside the repository, and logs in as DBT_SVC in TRANSFORMER.
+name: edgar_13f_warehouse
+version: "1.0.0"
+profile: edgar_13f_warehouse
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: target
+clean-targets: [target, dbt_packages]
+
+# Staging and core build in CORE, the target schema; marts build in MARTS.
+# generate_schema_name in macros/ makes a custom schema name the schema
+# itself, so marts land in MARTS and not in CORE_MARTS.
+models:
+  edgar_13f_warehouse:
+    staging:
+      +materialized: view
+    core:
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
