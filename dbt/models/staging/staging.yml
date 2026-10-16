@@ -1,0 +1,237 @@
+version: 2
+
+models:
+  - name: stg_dataset_submission
+    description: One row per filing in the data sets, typed. is_amendment comes from the submission type.
+    columns:
+      - name: accession_number
+        tests: [unique, not_null]
+      - name: filing_date
+        tests: [not_null]
+      - name: submission_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                  values: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"]
+      - name: cik
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+
+  - name: stg_dataset_coverpage
+    description: The cover page of each filing in the data sets, typed. is_amendment is the box as the filer ticked it, Y, N or blank.
+    columns:
+      - name: accession_number
+        tests: [unique, not_null]
+      - name: amendment_type
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["RESTATEMENT", "NEW HOLDINGS"]
+      - name: report_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                  values: ["13F HOLDINGS REPORT", "13F NOTICE", "13F COMBINATION REPORT"]
+
+  - name: stg_dataset_infotable
+    description: One row per holding in the data sets, typed, value in dollars by the filing date.
+    columns:
+      - name: accession_number
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                  to: ref('stg_dataset_submission')
+                  field: accession_number
+      - name: infotable_sk
+        tests: [not_null]
+      - name: cusip
+        tests: [not_null]
+      - name: value_usd
+        tests: [not_null]
+      - name: shares_or_principal_amount_type
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["SH", "PRN"]
+      - name: put_call
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["Put", "Call"]
+      - name: investment_discretion
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["SOLE", "DFND", "OTR"]
+
+  - name: stg_dataset_summarypage
+    description: The totals a holdings report declares, typed, value total in dollars by the filing date.
+    columns:
+      - name: accession_number
+        tests: [unique, not_null]
+
+  - name: stg_dataset_othermanager
+    description: The other managers reporting for the filer, from the cover page.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+
+  - name: stg_dataset_othermanager2
+    description: The other managers included in a filing, from the summary page, with the sequence number holdings refer to.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+      - name: sequence_number
+        tests: [not_null]
+
+  - name: stg_dataset_signature
+    description: The signature block of each filing in the data sets, typed.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+
+  - name: stg_xml_filing_records
+    description: The JSON lines of the XML path, one file version per filing, the envelope opened.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+      - name: record_type
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["cover", "holding"]
+      - name: filing_date
+        tests: [not_null]
+
+  - name: stg_xml_cover_pages
+    description: The cover page and summary page of each filing parsed from XML, named as the data set models.
+    columns:
+      - name: accession_number
+        tests: [unique, not_null]
+      - name: submission_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                  values: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"]
+      - name: cik
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+      - name: amendment_type
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["RESTATEMENT", "NEW HOLDINGS"]
+      - name: report_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                  values: ["13F HOLDINGS REPORT", "13F NOTICE", "13F COMBINATION REPORT"]
+
+  - name: stg_xml_holdings
+    description: One row per holding parsed from XML, named as the data set holdings, value in dollars as filed.
+    columns:
+      - name: accession_number
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                  to: ref('stg_xml_cover_pages')
+                  field: accession_number
+      - name: row_index
+        tests: [not_null]
+      - name: cusip
+        tests: [not_null]
+      - name: value_usd
+        tests: [not_null]
+      - name: shares_or_principal_amount_type
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["SH", "PRN"]
+      - name: investment_discretion
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["SOLE", "DFND", "OTR"]
+
+  - name: stg_xml_other_managers
+    description: The other managers a parsed cover page names, from its cover list and its summary list.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+      - name: listed_on
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["cover", "summary"]
+
+unit_tests:
+  # An expectation written as SQL is compared on every column of the model,
+  # so the untested columns are listed as typed nulls, the value the model
+  # gives a column the fixture leaves blank. The dict form would compare only
+  # the listed columns but cannot carry an ARRAY.
+  - name: value_is_in_dollars_by_filing_date
+    description: VALUE is in thousands before 2023-01-03 and in dollars from that day; the other-manager field becomes sequence numbers.
+    model: stg_dataset_infotable
+    given:
+      - input: source('raw', 'dataset_infotable')
+        rows:
+          - {accession_number: "A", infotable_sk: "1", value: "534", othermanager: "1, 2"}
+          - {accession_number: "B", infotable_sk: "2", value: "534", othermanager: "NONE"}
+          - {accession_number: "C", infotable_sk: "3", value: "534", othermanager: ""}
+      - input: ref('stg_dataset_submission')
+        format: sql
+        rows: |
+          select 'A' as accession_number, '2022-12-30'::date as filing_date union all
+          select 'B', '2023-01-03'::date union all
+          select 'C', '2023-01-03'::date
+    expect:
+      format: sql
+      rows: |
+        select 'A' as accession_number, 1 as infotable_sk, null::varchar as name_of_issuer, null::varchar as title_of_class, null::varchar as cusip, null::varchar as figi, 534000 as value_usd, null::number as shares_or_principal_amount, null::varchar as shares_or_principal_type, null::varchar as put_call, null::varchar as investment_discretion, '1, 2' as other_manager, array_construct(1, 2) as other_manager_sequence_numbers, null::number as voting_sole, null::number as voting_shared, null::number as voting_none, null::varchar as source_file, null::number as source_row, null::varchar as source_content_key, null::timestamp_ntz as source_last_modified union all
+        select 'B', 2, null::varchar, null::varchar, null::varchar, null::varchar, 534, null::number, null::varchar, null::varchar, null::varchar, 'NONE', array_construct(), null::number, null::number, null::number, null::varchar, null::number, null::varchar, null::timestamp_ntz union all
+        select 'C', 3, null::varchar, null::varchar, null::varchar, null::varchar, 534, null::number, null::varchar, null::varchar, null::varchar, null::varchar, array_construct(), null::number, null::number, null::number, null::varchar, null::number, null::varchar, null::timestamp_ntz
+
+  - name: cover_page_flags_and_dates_are_typed
+    description: Y, N and blank become true, false and null; DD-MON-YYYY becomes a date; blank text becomes null.
+    model: stg_dataset_coverpage
+    given:
+      - input: source('raw', 'dataset_coverpage')
+        rows:
+          - {accession_number: "A", isamendment: "Y", amendmentno: "3", amendmenttype: "NEW HOLDINGS", reportcalendarorquarter: "30-JUN-2018"}
+          - {accession_number: "B", isamendment: "N", amendmentno: "", amendmenttype: "", reportcalendarorquarter: "31-DEC-2017"}
+          - {accession_number: "C", isamendment: "", amendmentno: "", amendmenttype: " ", reportcalendarorquarter: "31-MAR-2018"}
+    expect:
+      format: sql
+      rows: |
+        select 'A' as accession_number, '2018-06-30'::date as report_calendar_or_quarter, true as is_amendment, 3 as amendment_no, 'NEW HOLDINGS' as amendment_type, null::boolean as conf_denied_expired, null::date as date_denied_expired, null::date as date_reported, null::varchar as reason_for_non_confidentiality, null::varchar as filing_manager_name, null::varchar as filing_manager_street1, null::varchar as filing_manager_street2, null::varchar as filing_manager_city, null::varchar as filing_manager_state_or_country, null::varchar as filing_manager_zip_code, null::varchar as report_type, null::varchar as form_13f_file_number, null::varchar as crd_number, null::varchar as sec_file_number, null::boolean as provide_info_for_instruction5, null::varchar as additional_information, null::varchar as source_file, null::number as source_row, null::varchar as source_content_key, null::timestamp_ntz as source_last_modified union all
+        select 'B', '2017-12-31'::date, false, null::number, null::varchar, null::boolean, null::date, null::date, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::boolean, null::varchar, null::varchar, null::number, null::varchar, null::timestamp_ntz union all
+        select 'C', '2018-03-31'::date, null::boolean, null::number, null::varchar, null::boolean, null::date, null::date, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::varchar, null::boolean, null::varchar, null::varchar, null::number, null::varchar, null::timestamp_ntz
+
+  - name: one_file_version_per_parsed_filing
+    description: A filing loaded twice keeps the rows of the file written last, and the filing date is read from the landing path.
+    model: stg_xml_filing_records
+    given:
+      - input: source('raw', 'parsed_filings')
+        format: sql
+        rows: |
+          select parse_json('{"accession": "X", "record_type": "cover", "source_key": "k", "record": {"cik": 1}}') as record,
+                 'parsed/edgar/filings/filed=2026-09-02/X.jsonl' as source_file, 1 as source_row,
+                 'old' as source_content_key, '2026-09-02 07:00:00'::timestamp_ntz as source_last_modified union all
+          select parse_json('{"accession": "X", "record_type": "holding", "source_key": "k", "record": {"row_index": 1}}'),
+                 'parsed/edgar/filings/filed=2026-09-02/X.jsonl', 2, 'old', '2026-09-02 07:00:00'::timestamp_ntz union all
+          select parse_json('{"accession": "X", "record_type": "cover", "source_key": "k", "record": {"cik": 1}}'),
+                 'parsed/edgar/filings/filed=2026-09-02/X.jsonl', 1, 'new', '2026-09-20 07:00:00'::timestamp_ntz union all
+          select parse_json('{"accession": "Y", "record_type": "cover", "source_key": "k", "record": {"cik": 2}}'),
+                 'parsed/edgar/filings/filed=2026-09-03/Y.jsonl', 1, 'only', '2026-09-03 07:00:00'::timestamp_ntz
+    expect:
+      rows:
+        - {accession_number: "X", record_type: "cover", source_content_key: "new", filing_date: "2026-09-02"}
+        - {accession_number: "Y", record_type: "cover", source_content_key: "only", filing_date: "2026-09-03"}
