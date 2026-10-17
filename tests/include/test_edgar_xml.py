@@ -275,9 +275,14 @@ class TestBuiltCoverPages:
 
         assert c.summary is None
 
-    def test_notice_with_a_real_summary_is_rejected(self):
-        with pytest.raises(XmlRecordError, match="notice has no summary"):
-            parse_cover_page(built_cover("13F-NT", "13F NOTICE"), "0000000007-26-000001")
+    def test_notice_with_a_real_summary_keeps_it(self):
+        # Two notices of 2026-10-13 carry a filled summary page. A notice
+        # supersedes nothing, so the totals ride along as evidence.
+        c = parse_cover_page(built_cover("13F-NT", "13F NOTICE"), "0000000007-26-000001")
+
+        assert c.report_type == "13F NOTICE"
+        assert c.summary is not None
+        assert c.summary.table_entry_total == 2
 
     def test_truncated_xml_is_a_parse_error(self):
         with pytest.raises(XmlParseError, match="not well-formed"):

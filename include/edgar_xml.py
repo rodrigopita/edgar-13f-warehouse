@@ -109,8 +109,6 @@ class CoverPage(Strict):
             raise ValueError(
                 f"submissionType {self.submission_type} disagrees with isAmendment={self.is_amendment}"
             )
-        if self.report_type == "13F NOTICE" and self.summary is not None:
-            raise ValueError("a notice has no summary page")
         return self
 
 
