@@ -17,7 +17,7 @@ One EDGAR submission by a filer, identified by its accession number. A filing is
 _Avoid_: submission, document, form, record
 
 **Period**:
-The calendar quarter end a filing reports on, taken from its cover page. One period collects filings across many filing dates and data sets.
+The calendar quarter end a filing reports on, as EDGAR records it with the submission. The cover page repeats it, and in a few filings gets it wrong. One period collects filings across many filing dates and data sets.
 _Avoid_: quarter, report date, as-of date, period of report
 
 **Holdings report**:
@@ -59,7 +59,7 @@ An addition a filer must make within six business days of the SEC denying, or en
 _Avoid_: CT amendment, disclosure amendment
 
 **Untyped amendment**:
-An amendment whose cover page names neither restatement nor addition. Fourteen exist in the data sets.
+An amendment whose cover page names neither restatement nor addition. Fifty-five exist in the data sets.
 _Avoid_: unknown amendment, blank amendment
 
 ## Canonical state
