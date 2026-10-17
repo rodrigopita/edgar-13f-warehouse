@@ -129,3 +129,31 @@ unit_tests:
         - {accession_number: "B", filing_position: 1, is_superseded: true, is_contributing: false}
         - {accession_number: "C", filing_position: 1, is_superseded: false, is_contributing: true}
         - {accession_number: "D", filing_position: 2, is_superseded: false, is_contributing: true}
+
+  - name: within_a_date_the_amendment_number_orders_filings
+    description: Advisors Asset Management, period 2019-03-31. The restatement is amendment 1 and the addition amendment 2, the SEC's order for a correction with additions, although the addition was submitted first; the addition supplements the restatement.
+    model: lineage_filings
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "0000891092-19-005843", cik: "0001297376", period_of_report: "2019-03-31", filing_date: "2019-05-15", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "0001999371-26-018135", cik: "0001297376", period_of_report: "2019-03-31", filing_date: "2026-08-18", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+          - {accession_number: "0001999371-26-018150", cik: "0001297376", period_of_report: "2019-03-31", filing_date: "2026-08-18", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT", amendment_no: 1}
+    expect:
+      rows:
+        - {accession_number: "0000891092-19-005843", filing_position: 1, filing_role: "original", is_superseded: true, is_contributing: false}
+        - {accession_number: "0001999371-26-018150", filing_position: 2, filing_role: "restatement", is_superseded: false, is_contributing: true}
+        - {accession_number: "0001999371-26-018135", filing_position: 3, filing_role: "addition", is_superseded: false, is_contributing: true}
+
+  - name: an_original_takes_effect_before_an_amendment_of_its_date
+    description: An original carries no amendment number and comes first among the filings of its date, whatever the accession order.
+    model: lineage_filings
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "B", cik: "1", period_of_report: "2023-12-31", filing_date: "2024-02-14", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "A", cik: "1", period_of_report: "2023-12-31", filing_date: "2024-02-14", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT", amendment_no: 1}
+    expect:
+      rows:
+        - {accession_number: "B", filing_position: 1, filing_role: "original", is_superseded: true, is_contributing: false}
+        - {accession_number: "A", filing_position: 2, filing_role: "restatement", is_superseded: false, is_contributing: true}

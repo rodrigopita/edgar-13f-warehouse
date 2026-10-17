@@ -1,8 +1,10 @@
 -- Every filing in its lineage, with its position and its supersedence state.
 -- A lineage is one filer's filings for one period of report, in filing
--- order: filing date, then accession number, whose last six digits count
--- the submitter's filings. The terms are those of CONTEXT.md and the rules
--- those of docs/scope.md, Decisions, 2026-10-15 and 2026-10-16.
+-- order: filing date; within a date the cover's amendment number, an
+-- original first since it has none; then the accession number, whose last
+-- six digits count the submitter's filings. The terms are those of
+-- CONTEXT.md and the rules those of docs/scope.md, Decisions, 2026-10-15
+-- to 2026-10-17.
 --
 -- The submission type decides original, amendment or notice; the cover's
 -- amendment type decides restatement or addition. The first 13F-HR is the
@@ -22,9 +24,10 @@ with ordered as (
         period_of_report,
         submission_type,
         amendment_type,
+        amendment_no,
         row_number() over (
             partition by cik, period_of_report
-            order by filing_date, accession_number
+            order by filing_date, amendment_no nulls first, accession_number
         ) as filing_position
     from {{ ref('filings') }}
 ),
