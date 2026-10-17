@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: filings
+    description: One row per filing from both paths, the cover and summary page beside EDGAR's own record of the submission.
+    columns:
+      - name: accession_number
+        description: The key. An accession on both paths fails the unique test; the precedence rule waits for the first overlap.
+        tests: [unique, not_null]
+      - name: cik
+        tests: [not_null]
+      - name: filing_date
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+      - name: submission_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"]
+      - name: origin
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["data_set", "walk"]
+
+  - name: lineage_filings
+    description: Every filing in its lineage, one filer and one period of report, with its filing position, its role and its supersedence state.
+    columns:
+      - name: accession_number
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('filings')
+                field: accession_number
+      - name: filing_position
+        tests: [not_null]
+      - name: filing_role
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["original", "restatement", "addition", "notice"]
+      - name: is_superseded
+        tests: [not_null]
+      - name: is_contributing
+        tests: [not_null]
