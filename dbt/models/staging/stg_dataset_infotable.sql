@@ -1,6 +1,6 @@
--- One row per holding in the data sets. The value is put in dollars by the
--- filing date of the holding's filing, which is why the submission is
--- joined here: the unit is a property of when the filing was made.
+-- One row per holding in the data sets, typed. The value stays as filed:
+-- whether a filing reports dollars or thousands is decided per filing in
+-- the core layer, by core.filing_value_units.
 select
     holdings.accession_number,
     {{ dataset_number('holdings.infotable_sk') }} as infotable_sk,
@@ -8,7 +8,7 @@ select
     {{ dataset_text('holdings.titleofclass') }} as title_of_class,
     upper({{ dataset_text('holdings.cusip') }}) as cusip,
     upper({{ dataset_text('holdings.figi') }}) as figi,
-    {{ dataset_usd('holdings.value', 'submissions.filing_date') }} as value_usd,
+    {{ dataset_number('holdings.value') }} as value_as_filed,
     {{ dataset_number('holdings.sshprnamt') }} as shares_or_principal_amount,
     {{ dataset_text('holdings.sshprnamttype') }} as shares_or_principal_amount_type,
     {{ dataset_text('holdings.putcall') }} as put_call,
@@ -23,5 +23,3 @@ select
     holdings.source_content_key,
     holdings.source_last_modified
 from {{ source('raw', 'dataset_infotable') }} as holdings
-left join {{ ref('stg_dataset_submission') }} as submissions
-    on submissions.accession_number = holdings.accession_number

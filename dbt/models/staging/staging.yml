@@ -37,7 +37,7 @@ models:
                   values: ["13F HOLDINGS REPORT", "13F NOTICE", "13F COMBINATION REPORT"]
 
   - name: stg_dataset_infotable
-    description: One row per holding in the data sets, typed, value in dollars by the filing date.
+    description: One row per holding in the data sets, typed, value as filed.
     columns:
       - name: accession_number
         tests:
@@ -50,7 +50,7 @@ models:
         tests: [not_null]
       - name: cusip
         tests: [not_null]
-      - name: value_usd
+      - name: value_as_filed
         tests: [not_null]
       - name: shares_or_principal_amount_type
         tests:
@@ -69,7 +69,7 @@ models:
                   values: ["SOLE", "DFND", "OTR"]
 
   - name: stg_dataset_summarypage
-    description: The totals a holdings report declares, typed, value total in dollars by the filing date.
+    description: The totals a holdings report declares, typed, value total as filed.
     columns:
       - name: accession_number
         tests: [unique, not_null]
@@ -135,7 +135,7 @@ models:
                   values: ["13F HOLDINGS REPORT", "13F NOTICE", "13F COMBINATION REPORT"]
 
   - name: stg_xml_holdings
-    description: One row per holding parsed from XML, named as the data set holdings, value in dollars as filed.
+    description: One row per holding parsed from XML, named as the data set holdings, value as filed.
     columns:
       - name: accession_number
         tests:
@@ -148,7 +148,7 @@ models:
         tests: [not_null]
       - name: cusip
         tests: [not_null]
-      - name: value_usd
+      - name: value_as_filed
         tests: [not_null]
       - name: shares_or_principal_amount_type
         tests:
@@ -177,8 +177,8 @@ unit_tests:
   # so the untested columns are listed as typed nulls, the value the model
   # gives a column the fixture leaves blank. The dict form would compare only
   # the listed columns but cannot carry an ARRAY.
-  - name: value_is_in_dollars_by_filing_date
-    description: VALUE is in thousands before 2023-01-03 and in dollars from that day; the other-manager field becomes sequence numbers.
+  - name: values_stay_as_filed_and_other_managers_become_sequence_numbers
+    description: VALUE keeps the number the filer wrote, whatever the filing date; the other-manager field becomes sequence numbers, NONE and blank an empty list.
     model: stg_dataset_infotable
     given:
       - input: source('raw', 'dataset_infotable')
@@ -186,16 +186,10 @@ unit_tests:
           - {accession_number: "A", infotable_sk: "1", value: "534", othermanager: "1, 2"}
           - {accession_number: "B", infotable_sk: "2", value: "534", othermanager: "NONE"}
           - {accession_number: "C", infotable_sk: "3", value: "534", othermanager: ""}
-      - input: ref('stg_dataset_submission')
-        format: sql
-        rows: |
-          select 'A' as accession_number, '2022-12-30'::date as filing_date union all
-          select 'B', '2023-01-03'::date union all
-          select 'C', '2023-01-03'::date
     expect:
       format: sql
       rows: |
-        select 'A' as accession_number, 1 as infotable_sk, null::varchar as name_of_issuer, null::varchar as title_of_class, null::varchar as cusip, null::varchar as figi, 534000 as value_usd, null::number as shares_or_principal_amount, null::varchar as shares_or_principal_type, null::varchar as put_call, null::varchar as investment_discretion, '1, 2' as other_manager, array_construct(1, 2) as other_manager_sequence_numbers, null::number as voting_sole, null::number as voting_shared, null::number as voting_none, null::varchar as source_file, null::number as source_row, null::varchar as source_content_key, null::timestamp_ntz as source_last_modified union all
+        select 'A' as accession_number, 1 as infotable_sk, null::varchar as name_of_issuer, null::varchar as title_of_class, null::varchar as cusip, null::varchar as figi, 534 as value_as_filed, null::number as shares_or_principal_amount, null::varchar as shares_or_principal_amount_type, null::varchar as put_call, null::varchar as investment_discretion, '1, 2' as other_manager, array_construct(1, 2) as other_manager_sequence_numbers, null::number as voting_sole, null::number as voting_shared, null::number as voting_none, null::varchar as source_file, null::number as source_row, null::varchar as source_content_key, null::timestamp_ntz as source_last_modified union all
         select 'B', 2, null::varchar, null::varchar, null::varchar, null::varchar, 534, null::number, null::varchar, null::varchar, null::varchar, 'NONE', array_construct(), null::number, null::number, null::number, null::varchar, null::number, null::varchar, null::timestamp_ntz union all
         select 'C', 3, null::varchar, null::varchar, null::varchar, null::varchar, 534, null::number, null::varchar, null::varchar, null::varchar, null::varchar, array_construct(), null::number, null::number, null::number, null::varchar, null::number, null::varchar, null::timestamp_ntz
 

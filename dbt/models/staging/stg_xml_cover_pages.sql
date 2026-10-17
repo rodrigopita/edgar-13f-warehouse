@@ -27,7 +27,7 @@ select
     parsed:additional_information::string as additional_information,
     parsed:summary:other_included_managers_count::number as other_included_managers_count,
     parsed:summary:table_entry_total::number as table_entry_total,
-    parsed:summary:table_value_total::number as table_value_total_usd,
+    parsed:summary:table_value_total::number as table_value_total_as_filed,
     parsed:summary:is_confidential_omitted::boolean as is_confidential_omitted,
     parsed:namespace::string as xml_namespace,
     parsed:schema_version::string as xml_schema_version,

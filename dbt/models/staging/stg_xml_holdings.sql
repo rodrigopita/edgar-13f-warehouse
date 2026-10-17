@@ -1,6 +1,7 @@
--- One row per holding parsed from XML. Values are in dollars as filed: the
--- XML path starts in 2026, after the unit change. The parser has already
--- upper-cased CUSIP and FIGI and read the other-manager field into a list.
+-- One row per holding parsed from XML. The value stays as filed, as on the
+-- data set path; core.filing_value_units decides its unit. The parser has
+-- already upper-cased CUSIP and FIGI and read the other-manager field into
+-- a list.
 select
     accession_number,
     filing_date,
@@ -9,7 +10,7 @@ select
     parsed:title_of_class::string as title_of_class,
     parsed:cusip::string as cusip,
     parsed:figi::string as figi,
-    parsed:value::number as value_usd,
+    parsed:value::number as value_as_filed,
     parsed:shares_or_principal::number as shares_or_principal_amount,
     parsed:shares_or_principal_type::string as shares_or_principal_amount_type,
     parsed:put_call::string as put_call,

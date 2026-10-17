@@ -20,14 +20,6 @@
 {%- endmacro %}
 
 {#-
-  VALUE and TABLEVALUETOTAL are in thousands of dollars before 2023-01-03 and
-  in dollars from that day, by filing date (the SEC readme in every zip).
--#}
-{% macro dataset_usd(column, filing_date) -%}
-    {{ dataset_number(column) }} * iff({{ filing_date }} < '2023-01-03'::date, 1000, 1)
-{%- endmacro %}
-
-{#-
   The other-manager field of a holding, as filed: sequence numbers separated
   by commas, 0, NONE or blank. Every run of digits is a sequence number, as
   the XML parser reads it, so 0 is [0] and NONE and blank are [].
