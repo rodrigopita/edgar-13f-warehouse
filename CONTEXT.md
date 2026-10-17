@@ -36,6 +36,10 @@ _Avoid_: position, line, row, info table entry
 What a holding is of, identified by CUSIP, and by FIGI as well in filings from 2023.
 _Avoid_: issuer, instrument, asset, ticker
 
+**Value unit**:
+Whether a filing states market value in dollars or in thousands of dollars. The SEC moved filers to dollars on 2023-01-03, and not every filer followed.
+_Avoid_: scale, denomination, units
+
 ## Amendments
 
 **Original**:
@@ -69,8 +73,8 @@ The ordered chain of filings by one filer for one period: the original, then eac
 _Avoid_: history, version chain, filing sequence
 
 **Filing order**:
-The order in which a lineage's filings take effect: by filing date, and by accession number within a date.
-_Avoid_: amendment number (filer-assigned, not trusted for order), submission order
+The order in which a lineage's filings take effect: by filing date; within a date by the cover's amendment number, an original first; then by accession number.
+_Avoid_: submission order, amendment order
 
 **Supersedence**:
 The relation by which a later filing in a lineage puts an earlier filing's holdings out of effect. A restatement supersedes every holdings report before it; an addition supersedes nothing.
