@@ -157,3 +157,16 @@ unit_tests:
       rows:
         - {accession_number: "B", filing_position: 1, filing_role: "original", is_superseded: true, is_contributing: false}
         - {accession_number: "A", filing_position: 2, filing_role: "restatement", is_superseded: false, is_contributing: true}
+
+  - name: a_second_original_is_a_restatement_whatever_its_cover_says
+    description: The submission type decides original against amendment, so a later 13F-HR whose cover names NEW HOLDINGS still resubmits the list and stands in for the first.
+    model: lineage_filings
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2020-06-30", filing_date: "2020-08-10", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "B", cik: "1", period_of_report: "2020-06-30", filing_date: "2020-08-12", submission_type: "13F-HR", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+    expect:
+      rows:
+        - {accession_number: "A", filing_role: "original", is_superseded: true, is_contributing: false}
+        - {accession_number: "B", filing_role: "restatement", is_superseded: false, is_contributing: true}

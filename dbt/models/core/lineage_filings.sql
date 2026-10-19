@@ -40,6 +40,7 @@ roled as (
             when submission_type = '13F-HR' and filing_position = min(
                 case when submission_type = '13F-HR' then filing_position end
             ) over (partition by cik, period_of_report) then 'original'
+            when submission_type = '13F-HR' then 'restatement'
             when amendment_type = 'NEW HOLDINGS' then 'addition'
             else 'restatement'
         end as filing_role
@@ -62,8 +63,10 @@ select
     filing_position,
     filing_role,
     effective_position,
-    filing_role <> 'notice' and filing_position < coalesce(effective_position, 0) as is_superseded,
-    filing_position = coalesce(effective_position, 0)
-        or (filing_role = 'addition' and filing_position > coalesce(effective_position, 0))
+    filing_role <> 'notice'
+        and effective_position is not null
+        and filing_position < effective_position as is_superseded,
+    filing_position is not distinct from effective_position
+        or (filing_role = 'addition' and (effective_position is null or filing_position > effective_position))
         as is_contributing
 from effective

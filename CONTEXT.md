@@ -84,9 +84,13 @@ _Avoid_: override, replacement, invalidation
 A holdings report whose holdings are out of effect because a restatement follows it in the lineage.
 _Avoid_: old filing, stale filing, replaced filing
 
+**Effective filing**:
+The latest original or restatement of a lineage. It and every addition filed after it are the contributing filings.
+_Avoid_: standing filing, current restatement
+
 **Contributing filing**:
 A filing in a lineage whose holdings are in effect: the latest restatement, or the original when none exists, and every addition filed after it.
-_Avoid_: active filing, effective filing, live filing
+_Avoid_: active filing, live filing
 
 **Canonical holdings**:
 The holdings of a filer for a period with every amendment applied: the holdings of the contributing filings, nothing else. The warehouse's answer to what the filer reported.

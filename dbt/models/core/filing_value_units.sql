@@ -39,6 +39,17 @@ ruled as (
     from per_filing
     inner join {{ ref('filings') }} as filings
         on filings.accession_number = per_filing.accession_number
+),
+
+read_units as (
+    select
+        *,
+        case
+            when median_value_per_share is null then filing_date_unit
+            when median_value_per_share < 1 then 'thousands'
+            else 'dollars'
+        end as value_unit
+    from ruled
 )
 
 select
@@ -46,18 +57,6 @@ select
     filing_date,
     median_value_per_share,
     filing_date_unit,
-    case
-        when median_value_per_share is null then filing_date_unit
-        when median_value_per_share < 1 then 'thousands'
-        else 'dollars'
-    end as value_unit,
-    iff(
-        case
-            when median_value_per_share is null then filing_date_unit
-            when median_value_per_share < 1 then 'thousands'
-            else 'dollars'
-        end = 'thousands',
-        1000,
-        1
-    ) as value_multiplier
-from ruled
+    value_unit,
+    iff(value_unit = 'thousands', 1000, 1) as value_multiplier
+from read_units
