@@ -97,7 +97,7 @@ The share of the securities of the filing an addition amends that the addition l
 _Avoid_: overlap, repeat rate
 
 **Copied holding**:
-A holding of an addition identical to one already in effect for the same filer and period, in security, put or call, amount, discretion and other managers. It is listed twice and held once, so it counts once.
+A holding of an addition identical to one already in effect for the same filer and period, in security, put or call, amount and its type, discretion and other managers. It is listed twice and held once, so it counts once.
 _Avoid_: duplicate, repeated holding
 
 **Canonical holdings**:

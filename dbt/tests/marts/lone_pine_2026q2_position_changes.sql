@@ -1,10 +1,11 @@
--- The cp4 done-criterion, checked against the source: what Lone Pine
--- Capital, CIK 0001061165, bought and sold in 2026-06-30 against
--- 2026-03-31. Expected rows come from its two filings on sec.gov, fetched
--- 2026-10-20, 0000919574-26-003439 (36 holdings) and 0000919574-26-005485
--- (34), read with include/edgar_xml.py and compared in Python, not SQL:
--- 13 entries, 15 exits, 8 increases and 13 decreases, every column of
--- every row, both ways.
+-- The cp4 done-criterion, checked against the source: the entries,
+-- exits, increases and decreases of Lone Pine Capital, CIK 0001061165,
+-- in 2026-06-30 against 2026-03-31. Expected rows come from its two
+-- filings on sec.gov, fetched 2026-10-20, 0000919574-26-003439 (36
+-- holdings) and 0000919574-26-005485 (34), read with include/edgar_xml.py
+-- and compared in Python, not SQL: 13 entries, 15 exits, 8 increases and
+-- 13 decreases, each row compared both ways in CUSIP, put or call, change
+-- kind, the two amounts and the two values.
 with expected as (
     select '02079K305' as cusip, cast(null as varchar) as put_call, 'increase' as change_kind, 215574 as shares_or_principal_amount, 187561 as previous_shares_or_principal_amount, 77039680 as value_usd, 53935041 as previous_value_usd
     union all select '032095101', cast(null as varchar), 'exit', cast(null as number), 223084, cast(null as number), 28186663

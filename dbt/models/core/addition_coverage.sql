@@ -76,7 +76,7 @@ compared_filings as (
     select compared_accession_number from compared where compared_accession_number is not null
 ),
 
-securities as (
+filing_securities as (
     select distinct holdings.accession_number, holdings.cusip
     from {{ ref('holdings') }} as holdings
     inner join compared_filings
@@ -85,17 +85,17 @@ securities as (
 ),
 
 compared_counts as (
-    select accession_number, count(*) as securities
-    from securities
+    select accession_number, count(*) as security_count
+    from filing_securities
     group by accession_number
 ),
 
 repeated_counts as (
-    select compared.accession_number, count(*) as securities
+    select compared.accession_number, count(*) as security_count
     from compared
-    inner join securities as added
+    inner join filing_securities as added
         on added.accession_number = compared.accession_number
-    inner join securities as in_compared
+    inner join filing_securities as in_compared
         on in_compared.accession_number = compared.compared_accession_number
         and in_compared.cusip = added.cusip
     group by compared.accession_number
@@ -109,11 +109,11 @@ counted as (
         compared.compared_accession_number,
         case
             when compared.compared_accession_number is not null
-                then coalesce(compared_counts.securities, 0)
+                then coalesce(compared_counts.security_count, 0)
         end as compared_securities,
         case
             when compared.compared_accession_number is not null
-                then coalesce(repeated_counts.securities, 0)
+                then coalesce(repeated_counts.security_count, 0)
         end as repeated_securities
     from compared
     left join compared_counts

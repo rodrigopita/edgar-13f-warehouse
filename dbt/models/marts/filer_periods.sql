@@ -42,8 +42,8 @@ portfolios as (
     select
         cik,
         period_of_report,
-        count(case when not is_option then 1 end) as positions,
-        count(case when is_option then 1 end) as option_positions,
+        count(case when not is_option then 1 end) as position_count,
+        count(case when is_option then 1 end) as option_position_count,
         coalesce(sum(case when not is_option then value_usd end), 0) as value_usd,
         coalesce(sum(case when is_option then value_usd end), 0) as option_value_usd,
         sum(case when not is_option and value_rank <= 10 then value_usd end) as top_ten_value_usd
@@ -125,8 +125,8 @@ select
         when previous_lineages.cik is not null then 'previous notice only'
         else 'no previous filing'
     end as comparison_basis,
-    portfolios.positions,
-    portfolios.option_positions,
+    portfolios.position_count,
+    portfolios.option_position_count,
     portfolios.value_usd,
     portfolios.option_value_usd,
     case

@@ -25,7 +25,7 @@ with named as (
     from {{ ref('lineage_filings') }}
 ),
 
-typed as (
+classified as (
     select
         period_of_report,
         period_of_report = {{ dbt.last_day('period_of_report', 'month') }}
@@ -42,4 +42,4 @@ select
     end as previous_period,
     extract(year from period_of_report) as calendar_year,
     extract(quarter from period_of_report) as calendar_quarter
-from typed
+from classified

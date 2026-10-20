@@ -54,7 +54,7 @@ last_period_holdings as (
         and cusip_summary.last_period = holdings.period_of_report
 ),
 
-issuer_name_choice as (
+name_choice as (
     select
         cusip,
         name_of_issuer
@@ -84,8 +84,8 @@ cusip_forms as (
     select
         cusip,
         {{ cusip_is_well_formed('cusip') }} as is_well_formed,
-        {% for position in range(1, 9) -%}
-        {{ cusip_character_value('cusip', position) }} as value_{{ position }},
+        {% for character_index in range(1, 9) -%}
+        {{ cusip_character_value('cusip', character_index) }} as value_{{ character_index }},
         {% endfor -%}
         ascii(substr(cusip, 9, 1)) - 48 as stated_check_digit
     from cusip_summary
@@ -114,7 +114,7 @@ cusip_checks as (
 
 select
     cusip_summary.cusip,
-    issuer_name_choice.name_of_issuer,
+    name_choice.name_of_issuer,
     title_of_class_choice.title_of_class,
     cusip_summary.figi,
     cusip_summary.figi_count,
@@ -125,7 +125,7 @@ select
 from cusip_summary
 inner join cusip_checks
     on cusip_checks.cusip = cusip_summary.cusip
-left join issuer_name_choice
-    on issuer_name_choice.cusip = cusip_summary.cusip
+left join name_choice
+    on name_choice.cusip = cusip_summary.cusip
 left join title_of_class_choice
     on title_of_class_choice.cusip = cusip_summary.cusip

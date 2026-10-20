@@ -79,9 +79,9 @@ unit_tests:
         rows: []
     expect:
       rows:
-        - {cik: "1", positions: 12, option_positions: 1, value_usd: 64, option_value_usd: 1000, top_ten_share: 0.96875, hhi: 0.1669921875}
-        - {cik: "2", positions: 4, option_positions: 0, value_usd: 8, option_value_usd: 0, top_ten_share: 1.0, hhi: 0.34375}
-        - {cik: "3", positions: 1, option_positions: 0, value_usd: 0, option_value_usd: 0, top_ten_share: null, hhi: null}
+        - {cik: "1", position_count: 12, option_position_count: 1, value_usd: 64, option_value_usd: 1000, top_ten_share: 0.96875, hhi: 0.1669921875}
+        - {cik: "2", position_count: 4, option_position_count: 0, value_usd: 8, option_value_usd: 0, top_ten_share: 1.0, hhi: 0.34375}
+        - {cik: "3", position_count: 1, option_position_count: 0, value_usd: 0, option_value_usd: 0, top_ten_share: null, hhi: null}
 
   - name: confidential_omission_is_said_denied_or_not_stated
     description: "Filer 1's contributing addition says holdings were omitted, so its filer period is true. Filer 2's contributing filing says none were, and its superseded original that says so does not count, so false. Filer 3's addition leaves the flag blank beside an original that says none were, so null: a blank is not a no."
