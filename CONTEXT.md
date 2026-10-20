@@ -134,6 +134,18 @@ _Avoid_: buy, purchase, accumulation
 A position held in both periods whose share or principal amount, stated the same way in both, shrank. Read like an increase.
 _Avoid_: sell, sale, trim
 
+**Weight**:
+A position's share of its filer's value in a period, options left out.
+_Avoid_: allocation, percentage, portfolio share
+
+**Concentration**:
+How much of a filer's value in a period sits in few positions: the share of its ten largest, and the sum of every position's squared weight.
+_Avoid_: diversification, focus
+
+**Overlap**:
+How much two filers' portfolios have in common in a period: over the securities both hold, the smaller of their two weights, summed. One for identical portfolios, zero for disjoint ones.
+_Avoid_: similarity, correlation, common holdings
+
 ## Sources
 
 **Data set**:

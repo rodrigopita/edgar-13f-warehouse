@@ -1,0 +1,164 @@
+version: 2
+
+unit_tests:
+  - name: each_comparison_basis_once
+    description: "Four filers with holdings for 2024-03-31, whose previous period is 2023-12-31 across the year boundary: filer 1 has holdings then, filer 2 a holdings report that lists none, filer 3 only a notice, filer 4 nothing. Filer 1's own 2023-12-31 has no filing before it."
+    model: filer_periods
+    given:
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", put_call: null, is_option: false, value_usd: 9}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "3", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "4", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+      - input: ref('periods')
+        rows:
+          - {period_of_report: "2024-03-31", previous_period: "2023-12-31"}
+          - {period_of_report: "2023-12-31", previous_period: "2023-09-30"}
+      - input: ref('filers')
+        rows:
+          - {cik: "1", filer_name: "ONE"}
+          - {cik: "2", filer_name: "TWO"}
+          - {cik: "3", filer_name: "THREE"}
+          - {cik: "4", filer_name: "FOUR"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "1P", cik: "1", period_of_report: "2023-12-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "2P", cik: "2", period_of_report: "2023-12-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "3P", cik: "3", period_of_report: "2023-12-31", filing_role: "notice", is_contributing: false}
+      - input: ref('filings')
+        rows: []
+      - input: ref('data_quality_rows')
+        rows: []
+    expect:
+      rows:
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous period"}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2023-12-31", previous_period: "2023-09-30", comparison_basis: "no previous filing"}
+        - {cik: "2", filer_name: "TWO", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous report lists none"}
+        - {cik: "3", filer_name: "THREE", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous notice only"}
+        - {cik: "4", filer_name: "FOUR", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "no previous filing"}
+
+  - name: concentration_leaves_options_out
+    description: "Filer 1 holds twelve positions worth 64 in all, the ten largest worth 62, and a put worth 1000 that counts in neither the value nor the concentration. Filer 2 holds four, fewer than ten, all of its value in its top ten. Filer 3's positions are worth nothing, so its shares are null. Values are powers of two, so the shares and HHI are exact."
+    model: filer_periods
+    given:
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A01", put_call: null, is_option: false, value_usd: 16}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A02", put_call: null, is_option: false, value_usd: 16}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A03", put_call: null, is_option: false, value_usd: 8}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A04", put_call: null, is_option: false, value_usd: 8}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A05", put_call: null, is_option: false, value_usd: 4}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A06", put_call: null, is_option: false, value_usd: 4}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A07", put_call: null, is_option: false, value_usd: 2}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A08", put_call: null, is_option: false, value_usd: 2}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A09", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A10", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A11", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A12", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "A01", put_call: "Put", is_option: true, value_usd: 1000}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "B01", put_call: null, is_option: false, value_usd: 4}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "B02", put_call: null, is_option: false, value_usd: 2}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "B03", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "B04", put_call: null, is_option: false, value_usd: 1}
+          - {cik: "3", period_of_report: "2024-03-31", cusip: "C01", put_call: null, is_option: false, value_usd: 0}
+      - input: ref('periods')
+        rows:
+          - {period_of_report: "2024-03-31", previous_period: "2023-12-31"}
+      - input: ref('filers')
+        rows:
+          - {cik: "1", filer_name: "ONE"}
+          - {cik: "2", filer_name: "TWO"}
+          - {cik: "3", filer_name: "THREE"}
+      - input: ref('lineage_filings')
+        rows: []
+      - input: ref('filings')
+        rows: []
+      - input: ref('data_quality_rows')
+        rows: []
+    expect:
+      rows:
+        - {cik: "1", positions: 12, option_positions: 1, value_usd: 64, option_value_usd: 1000, top_ten_share: 0.96875, hhi: 0.1669921875}
+        - {cik: "2", positions: 4, option_positions: 0, value_usd: 8, option_value_usd: 0, top_ten_share: 1.0, hhi: 0.34375}
+        - {cik: "3", positions: 1, option_positions: 0, value_usd: 0, option_value_usd: 0, top_ten_share: null, hhi: null}
+
+  - name: confidential_omission_is_said_denied_or_not_stated
+    description: "Filer 1's contributing addition says holdings were omitted, so its filer period is true. Filer 2's contributing filing says none were, and its superseded original that says so does not count, so false. Filer 3's addition leaves the flag blank beside an original that says none were, so null: a blank is not a no."
+    model: filer_periods
+    given:
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "3", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+      - input: ref('periods')
+        rows:
+          - {period_of_report: "2024-03-31", previous_period: "2023-12-31"}
+      - input: ref('filers')
+        rows:
+          - {cik: "1", filer_name: "ONE"}
+          - {cik: "2", filer_name: "TWO"}
+          - {cik: "3", filer_name: "THREE"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "1O", cik: "1", period_of_report: "2024-03-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "1A", cik: "1", period_of_report: "2024-03-31", filing_role: "addition", is_contributing: true}
+          - {accession_number: "2O", cik: "2", period_of_report: "2024-03-31", filing_role: "original", is_contributing: false}
+          - {accession_number: "2R", cik: "2", period_of_report: "2024-03-31", filing_role: "restatement", is_contributing: true}
+          - {accession_number: "3O", cik: "3", period_of_report: "2024-03-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "3A", cik: "3", period_of_report: "2024-03-31", filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "1O", is_confidential_omitted: false}
+          - {accession_number: "1A", is_confidential_omitted: true}
+          - {accession_number: "2O", is_confidential_omitted: true}
+          - {accession_number: "2R", is_confidential_omitted: false}
+          - {accession_number: "3O", is_confidential_omitted: false}
+          - {accession_number: "3A", is_confidential_omitted: null}
+      - input: ref('data_quality_rows')
+        rows: []
+    expect:
+      rows:
+        - {cik: "1", confidential_omission: true}
+        - {cik: "2", confidential_omission: false}
+        - {cik: "3", confidential_omission: null}
+
+  - name: quality_flags_come_from_contributing_filings
+    description: "Filer 1's contributing filing has a value unit override; filer 2's yardstick miss is on a superseded filing and does not mark it; filer 3's contributing addition misses the yardstick. Other checks never set either flag."
+    model: filer_periods
+    given:
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+          - {cik: "3", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10}
+      - input: ref('periods')
+        rows:
+          - {period_of_report: "2024-03-31", previous_period: "2023-12-31"}
+      - input: ref('filers')
+        rows:
+          - {cik: "1", filer_name: "ONE"}
+          - {cik: "2", filer_name: "TWO"}
+          - {cik: "3", filer_name: "THREE"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "1O", cik: "1", period_of_report: "2024-03-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "2O", cik: "2", period_of_report: "2024-03-31", filing_role: "original", is_contributing: false}
+          - {accession_number: "2R", cik: "2", period_of_report: "2024-03-31", filing_role: "restatement", is_contributing: true}
+          - {accession_number: "3O", cik: "3", period_of_report: "2024-03-31", filing_role: "original", is_contributing: true}
+          - {accession_number: "3A", cik: "3", period_of_report: "2024-03-31", filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows: []
+      - input: ref('data_quality_rows')
+        rows:
+          - {check_name: "value_unit_overrides_filing_date_rule", accession_number: "1O"}
+          - {check_name: "untyped_amendment", accession_number: "1O"}
+          - {check_name: "value_off_yardstick_by_a_thousand", accession_number: "2O"}
+          - {check_name: "value_off_yardstick_by_a_thousand", accession_number: "3A"}
+          - {check_name: "second_original", accession_number: "3O"}
+    expect:
+      rows:
+        - {cik: "1", has_value_unit_override: true, has_value_off_yardstick: false}
+        - {cik: "2", has_value_unit_override: false, has_value_off_yardstick: false}
+        - {cik: "3", has_value_unit_override: false, has_value_off_yardstick: true}

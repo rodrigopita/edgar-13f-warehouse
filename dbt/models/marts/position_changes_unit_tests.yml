@@ -1,0 +1,79 @@
+version: 2
+
+unit_tests:
+  - name: each_change_kind_once
+    description: "Filer 1, 2024-03-31 against 2023-12-31: C1 grows, C2 shrinks, C3 stays, C4 enters, C5 exits, C6 is stated in shares now and in principal before, and C7 mixes the two now, so neither of the last two compares. Names come from securities."
+    model: position_changes
+    given:
+      - input: ref('filer_periods')
+        rows:
+          - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous period"}
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 100, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", put_call: null, is_option: false, value_usd: 40, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 50}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C2", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 10}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C2", put_call: null, is_option: false, value_usd: 30, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 20}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C3", put_call: null, is_option: false, value_usd: 6, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 5}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C3", put_call: null, is_option: false, value_usd: 5, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 5}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C4", put_call: null, is_option: false, value_usd: 7, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 7}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C5", put_call: null, is_option: false, value_usd: 3, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 3}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C6", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 10}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C6", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "PRN", shares_or_principal_amount: 10}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C7", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: null, shares_or_principal_amount: null}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C7", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 10}
+      - input: ref('securities')
+        rows:
+          - {cusip: "C1", name_of_issuer: "ALPHA", title_of_class: "COM"}
+          - {cusip: "C5", name_of_issuer: "EPSILON", title_of_class: "COM"}
+    expect:
+      rows:
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C1", name_of_issuer: "ALPHA", change_kind: "increase", shares_or_principal_amount: 100, previous_shares_or_principal_amount: 50, amount_change: 50, value_usd: 100, previous_value_usd: 40}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C2", name_of_issuer: null, change_kind: "decrease", shares_or_principal_amount: 10, previous_shares_or_principal_amount: 20, amount_change: -10, value_usd: 10, previous_value_usd: 30}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C3", name_of_issuer: null, change_kind: "unchanged", shares_or_principal_amount: 5, previous_shares_or_principal_amount: 5, amount_change: 0, value_usd: 6, previous_value_usd: 5}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C4", name_of_issuer: null, change_kind: "entry", shares_or_principal_amount: 7, previous_shares_or_principal_amount: null, amount_change: null, value_usd: 7, previous_value_usd: null}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C5", name_of_issuer: "EPSILON", change_kind: "exit", shares_or_principal_amount: null, previous_shares_or_principal_amount: 3, amount_change: null, value_usd: null, previous_value_usd: 3}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C6", name_of_issuer: null, change_kind: "not comparable", shares_or_principal_amount: 10, previous_shares_or_principal_amount: 10, amount_change: null, value_usd: 10, previous_value_usd: 10}
+        - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", cusip: "C7", name_of_issuer: null, change_kind: "not comparable", shares_or_principal_amount: null, previous_shares_or_principal_amount: 10, amount_change: null, value_usd: 10, previous_value_usd: 10}
+
+  - name: a_put_matches_a_put_and_a_security_matches_a_security
+    description: "Shares of C1 and a put on C1 held in both periods are each unchanged, and a call on C1 new this period is an entry: the null put or call of the shares matches only another null, never an option."
+    model: position_changes
+    given:
+      - input: ref('filer_periods')
+        rows:
+          - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous period"}
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: "Put", is_option: true, value_usd: 3, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 30}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", put_call: "Put", is_option: true, value_usd: 3, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 30}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: "Call", is_option: true, value_usd: 2, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 20}
+      - input: ref('securities')
+        rows: []
+    expect:
+      rows:
+        - {cusip: "C1", put_call: null, is_option: false, change_kind: "unchanged"}
+        - {cusip: "C1", put_call: "Put", is_option: true, change_kind: "unchanged"}
+        - {cusip: "C1", put_call: "Call", is_option: true, change_kind: "entry"}
+
+  - name: a_filer_period_without_its_previous_period_has_no_rows
+    description: "Filer 2 has no holdings for its previous period, so it has no entries or exits at all; filer 1's comparable filer period has its row, and filer 1's previous period, compared with nothing, adds none of its own."
+    model: position_changes
+    given:
+      - input: ref('filer_periods')
+        rows:
+          - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "previous period"}
+          - {cik: "1", filer_name: "ONE", period_of_report: "2023-12-31", previous_period: "2023-09-30", comparison_basis: "no previous filing"}
+          - {cik: "2", filer_name: "TWO", period_of_report: "2024-03-31", previous_period: "2023-12-31", comparison_basis: "no previous filing"}
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+          - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 100}
+      - input: ref('securities')
+        rows: []
+    expect:
+      rows:
+        - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", change_kind: "unchanged"}

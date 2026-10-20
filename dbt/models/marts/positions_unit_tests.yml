@@ -1,0 +1,57 @@
+version: 2
+
+unit_tests:
+  - name: a_position_sums_its_holdings_across_discretion_managers_and_filings
+    description: "One filer's holdings of one security in one period, two in the original under different discretions and one in an addition, are one position: values and amounts summed, three holdings from two filings."
+    model: positions
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: null, value_usd: 10, shares_or_principal_amount: 100, shares_or_principal_amount_type: "SH", investment_discretion: "SOLE"}
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: null, value_usd: 5, shares_or_principal_amount: 50, shares_or_principal_amount_type: "SH", investment_discretion: "DFND"}
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "A", cusip: "C1", put_call: null, value_usd: 2, shares_or_principal_amount: 25, shares_or_principal_amount_type: "SH", investment_discretion: "SOLE"}
+    expect:
+      rows:
+        - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, holding_count: 3, filing_count: 2, value_usd: 17, shares_or_principal_amount_type: "SH", shares_or_principal_amount: 175}
+
+  - name: a_put_and_a_call_are_positions_apart_from_the_security
+    description: "Shares of a security, a put on it and a call on it are three positions, the two options marked as such."
+    model: positions
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: null, value_usd: 10, shares_or_principal_amount: 100, shares_or_principal_amount_type: "SH"}
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: "Put", value_usd: 3, shares_or_principal_amount: 30, shares_or_principal_amount_type: "SH"}
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: "Call", value_usd: 2, shares_or_principal_amount: 20, shares_or_principal_amount_type: "SH"}
+    expect:
+      rows:
+        - {cusip: "C1", put_call: null, is_option: false, value_usd: 10, shares_or_principal_amount: 100}
+        - {cusip: "C1", put_call: "Put", is_option: true, value_usd: 3, shares_or_principal_amount: 30}
+        - {cusip: "C1", put_call: "Call", is_option: true, value_usd: 2, shares_or_principal_amount: 20}
+
+  - name: a_position_mixing_shares_and_principal_has_no_amount
+    description: "A position whose holdings state the amount once in shares and once in principal keeps its summed value and carries neither an amount type nor an amount, since a sum of the two means nothing."
+    model: positions
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C2", put_call: null, value_usd: 10, shares_or_principal_amount: 100, shares_or_principal_amount_type: "SH"}
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C2", put_call: null, value_usd: 20, shares_or_principal_amount: 1000, shares_or_principal_amount_type: "PRN"}
+    expect:
+      rows:
+        - {cusip: "C2", holding_count: 2, value_usd: 30, shares_or_principal_amount_type: null, shares_or_principal_amount: null}
+
+  - name: positions_of_another_filer_or_period_stay_apart
+    description: "The same security held by two filers, and by one filer in two periods, makes three positions."
+    model: positions
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", accession_number: "O", cusip: "C1", put_call: null, value_usd: 10, shares_or_principal_amount: 100, shares_or_principal_amount_type: "SH"}
+          - {cik: "1", period_of_report: "2023-12-31", accession_number: "P", cusip: "C1", put_call: null, value_usd: 9, shares_or_principal_amount: 90, shares_or_principal_amount_type: "SH"}
+          - {cik: "2", period_of_report: "2024-03-31", accession_number: "Q", cusip: "C1", put_call: null, value_usd: 8, shares_or_principal_amount: 80, shares_or_principal_amount_type: "SH"}
+    expect:
+      rows:
+        - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", value_usd: 10}
+        - {cik: "1", period_of_report: "2023-12-31", cusip: "C1", value_usd: 9}
+        - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", value_usd: 8}

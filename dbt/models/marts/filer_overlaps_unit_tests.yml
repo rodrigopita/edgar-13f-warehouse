@@ -1,0 +1,49 @@
+version: 2
+
+unit_tests:
+  - name: every_pair_once_with_zeros_where_nothing_is_shared
+    description: "Three filers for 2024-03-31. Filers 1 and 2 share C1, at weights one half and one quarter, so their overlap is one quarter; filer 2's put on C2 is an option and shares nothing. Filer 3 shares nothing with either, and its pairs are there with zeros."
+    model: filer_overlaps
+    given:
+      - input: ref('filer_periods')
+        rows:
+          - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", value_usd: 100}
+          - {cik: "2", filer_name: "TWO", period_of_report: "2024-03-31", value_usd: 100}
+          - {cik: "3", filer_name: "THREE", period_of_report: "2024-03-31", value_usd: 10}
+      - input: ref('positions')
+        rows:
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 50}
+          - {cik: "1", period_of_report: "2024-03-31", cusip: "C2", put_call: null, is_option: false, value_usd: 50}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C1", put_call: null, is_option: false, value_usd: 25}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C3", put_call: null, is_option: false, value_usd: 75}
+          - {cik: "2", period_of_report: "2024-03-31", cusip: "C2", put_call: "Put", is_option: true, value_usd: 1000}
+          - {cik: "3", period_of_report: "2024-03-31", cusip: "C9", put_call: null, is_option: false, value_usd: 10}
+    expect:
+      rows:
+        - {period_of_report: "2024-03-31", cik: "1", filer_name: "ONE", other_cik: "2", other_filer_name: "TWO", shared_securities: 1, weight_overlap: 0.25}
+        - {period_of_report: "2024-03-31", cik: "1", filer_name: "ONE", other_cik: "3", other_filer_name: "THREE", shared_securities: 0, weight_overlap: 0.0}
+        - {period_of_report: "2024-03-31", cik: "2", filer_name: "TWO", other_cik: "3", other_filer_name: "THREE", shared_securities: 0, weight_overlap: 0.0}
+
+  - name: only_the_largest_filers_of_each_period_pair
+    description: "With the limit set to two, the two largest filers of each period by value pair, ties broken by CIK: in 2024-03-31 filers 2 and 3 tie at 50 behind filer 1, so filer 2 is in; in 2023-12-31 filer 3 is largest. A filer worth nothing is never ranked, so 2023-09-30, with one filer worth something, has no pair."
+    model: filer_overlaps
+    overrides:
+      vars:
+        overlap_filers: 2
+    given:
+      - input: ref('filer_periods')
+        rows:
+          - {cik: "1", filer_name: "ONE", period_of_report: "2024-03-31", value_usd: 100}
+          - {cik: "2", filer_name: "TWO", period_of_report: "2024-03-31", value_usd: 50}
+          - {cik: "3", filer_name: "THREE", period_of_report: "2024-03-31", value_usd: 50}
+          - {cik: "3", filer_name: "THREE", period_of_report: "2023-12-31", value_usd: 90}
+          - {cik: "1", filer_name: "ONE", period_of_report: "2023-12-31", value_usd: 0}
+          - {cik: "4", filer_name: "FOUR", period_of_report: "2023-12-31", value_usd: 10}
+          - {cik: "1", filer_name: "ONE", period_of_report: "2023-09-30", value_usd: 0}
+          - {cik: "4", filer_name: "FOUR", period_of_report: "2023-09-30", value_usd: 10}
+      - input: ref('positions')
+        rows: []
+    expect:
+      rows:
+        - {period_of_report: "2024-03-31", cik: "1", other_cik: "2", shared_securities: 0}
+        - {period_of_report: "2023-12-31", cik: "3", other_cik: "4", shared_securities: 0}

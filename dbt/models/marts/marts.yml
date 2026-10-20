@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: positions
+    description: One row per position, a filer's canonical holdings of one security in one period, keyed by CIK, period, CUSIP and put or call, with value and amount summed.
+    columns:
+      - name: cik
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+      - name: cusip
+        tests: [not_null]
+      - name: shares_or_principal_amount
+        description: The summed amount, null when the position's holdings mix shares and principal.
+
+  - name: filer_periods
+    description: One row per filer period with canonical holdings, its value and concentration with options apart, whether it compares with the previous period, and what its contributing filings say about confidential treatment and value units.
+    columns:
+      - name: cik
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+      - name: comparison_basis
+        description: Whether entries and exits compare with the previous period, and why not when they do not.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - previous period
+                  - previous report lists none
+                  - previous notice only
+                  - no previous filing
+      - name: top_ten_share
+        description: The share of the value in the ten largest positions, options left out; null when the value is zero.
+      - name: hhi
+        description: The sum of the squared shares of every position, options left out; null when the value is zero.
+      - name: confidential_omission
+        description: True when a contributing filing says holdings were omitted under confidential treatment, false when each says none were, null when one leaves it blank and none says so.
+
+  - name: position_changes
+    description: Entries, exits, increases and decreases by amount, for each filer period that compares with its previous period, every position of either side by side.
+    columns:
+      - name: cik
+        tests: [not_null]
+      - name: period_of_report
+        tests: [not_null]
+      - name: cusip
+        tests: [not_null]
+      - name: change_kind
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["entry", "exit", "increase", "decrease", "unchanged", "not comparable"]
+      - name: amount_change
+        description: The change in the amount, only when both periods state it the same way.
+
+  - name: filer_overlaps
+    description: Every pair of the largest filers of each period by value, the overlap_filers var (100 by default), with the securities both hold and the sum of the smaller of their weights in each.
+    columns:
+      - name: cik
+        tests: [not_null]
+      - name: other_cik
+        tests: [not_null]
+      - name: weight_overlap
+        description: The sum over shared securities of the smaller of the two filers' weights, 1 for identical portfolios and 0 for disjoint ones.
