@@ -1,0 +1,158 @@
+version: 2
+
+unit_tests:
+  - name: the_name_is_the_most_frequent_in_the_last_period
+    description: Three filers call one CUSIP by one name and two call it by another in the last period. An older period, where the other name has more holdings, does not count.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "037833100", period_of_report: "2023-12-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "037833100", period_of_report: "2023-12-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "037833100", period_of_report: "2023-12-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "037833100", period_of_report: "2023-12-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COMMON STOCK", figi: null}
+    expect:
+      rows:
+        - {cusip: "037833100", name_of_issuer: "APPLE INC", title_of_class: "COM", first_period: "2023-12-31", last_period: "2024-03-31"}
+
+  - name: a_tie_in_the_name_goes_to_the_alphabetically_first
+    description: Five CUSIPs, each with two names and two classes held by the same number of holdings in the last period, the later name first in some and second in others. The alphabetically first of each stands.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COMMON", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COMMON", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COM", figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "ALPHABET MICROSOFT", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "ALPHABET MICROSOFT", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "SHS", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "SHS", figi: null}
+          - {cusip: "88160R101", period_of_report: "2024-03-31", name_of_issuer: "TESLA MOTORS INC", title_of_class: "COM", figi: null}
+          - {cusip: "88160R101", period_of_report: "2024-03-31", name_of_issuer: "TESLA MOTORS INC", title_of_class: "COM", figi: null}
+          - {cusip: "88160R101", period_of_report: "2024-03-31", name_of_issuer: "TESLA INC", title_of_class: "CAP STK", figi: null}
+          - {cusip: "88160R101", period_of_report: "2024-03-31", name_of_issuer: "TESLA INC", title_of_class: "CAP STK", figi: null}
+          - {cusip: "G1151C101", period_of_report: "2024-03-31", name_of_issuer: "ACCENTURE LTD", title_of_class: "CL A", figi: null}
+          - {cusip: "G1151C101", period_of_report: "2024-03-31", name_of_issuer: "ACCENTURE LTD", title_of_class: "CL A", figi: null}
+          - {cusip: "G1151C101", period_of_report: "2024-03-31", name_of_issuer: "ACCENTURE PLC", title_of_class: "SHS", figi: null}
+          - {cusip: "G1151C101", period_of_report: "2024-03-31", name_of_issuer: "ACCENTURE PLC", title_of_class: "SHS", figi: null}
+          - {cusip: "67066G104", period_of_report: "2024-03-31", name_of_issuer: "NVIDIA CORPORATION", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "67066G104", period_of_report: "2024-03-31", name_of_issuer: "NVIDIA CORPORATION", title_of_class: "COMMON STOCK", figi: null}
+          - {cusip: "67066G104", period_of_report: "2024-03-31", name_of_issuer: "NVIDIA CORP", title_of_class: "COM", figi: null}
+          - {cusip: "67066G104", period_of_report: "2024-03-31", name_of_issuer: "NVIDIA CORP", title_of_class: "COM", figi: null}
+    expect:
+      rows:
+        - {cusip: "037833100", name_of_issuer: "APPLE COMPUTER INC", title_of_class: "COM"}
+        - {cusip: "594918104", name_of_issuer: "ALPHABET MICROSOFT", title_of_class: "COM"}
+        - {cusip: "67066G104", name_of_issuer: "NVIDIA CORP", title_of_class: "COM"}
+        - {cusip: "88160R101", name_of_issuer: "TESLA INC", title_of_class: "CAP STK"}
+        - {cusip: "G1151C101", name_of_issuer: "ACCENTURE LTD", title_of_class: "CL A"}
+
+  - name: a_null_name_does_not_stand_for_the_cusip
+    description: Holdings with no name in the last period do not outvote the name that is there, and a CUSIP with no name anywhere has a null name.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: null, title_of_class: null, figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: null, title_of_class: null, figi: null}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: null, title_of_class: null, figi: null}
+    expect:
+      rows:
+        - {cusip: "037833100", name_of_issuer: "APPLE INC", title_of_class: "COM"}
+        - {cusip: "594918104", name_of_issuer: null, title_of_class: null}
+
+  - name: a_figi_stands_only_where_filers_report_one
+    description: One CUSIP reported under one FIGI three times, and with none in another holding, keeps it. Another reported under three FIGIs, one of them most often, keeps none, since its filers disagree, and counts all three. A CUSIP with no FIGI has none and a count of zero.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2023-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: "BBG000B9XRY4"}
+          - {cusip: "037833100", period_of_report: "2023-06-30", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: "BBG000B9XRY4"}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: "BBG000B9XRY4"}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "COM", figi: "BBG000BPH459"}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "COM", figi: "BBG000BPH459"}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "COM", figi: "BBG001S5TD05"}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "COM", figi: "BBG00ZZZZZZ1"}
+          - {cusip: "88160R101", period_of_report: "2022-12-31", name_of_issuer: "TESLA INC", title_of_class: "COM", figi: null}
+    expect:
+      rows:
+        - {cusip: "037833100", figi: "BBG000B9XRY4", figi_count: 1}
+        - {cusip: "594918104", figi: null, figi_count: 3}
+        - {cusip: "88160R101", figi: null, figi_count: 0}
+
+  - name: real_cusips_pass_the_check_digit_and_a_corrupted_one_fails
+    description: Apple, 037833100, and Microsoft, 594918104, carry their check digits. 037833101 is Apple's with the last digit changed. 12345*@#7 uses the three special characters, and 12345*@#0 is that one corrupted. Accenture, G1151C101, and Tesla, 88160R101, hold letters at odd and even positions, where a letter is a two-digit value to sum; 88160R102 is Tesla's corrupted.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "594918104", period_of_report: "2024-03-31", name_of_issuer: "MICROSOFT CORP", title_of_class: "COM", figi: null}
+          - {cusip: "037833101", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: null}
+          - {cusip: "12345*@#7", period_of_report: "2024-03-31", name_of_issuer: "SPECIAL", title_of_class: "COM", figi: null}
+          - {cusip: "12345*@#0", period_of_report: "2024-03-31", name_of_issuer: "SPECIAL", title_of_class: "COM", figi: null}
+          - {cusip: "G1151C101", period_of_report: "2024-03-31", name_of_issuer: "ACCENTURE PLC", title_of_class: "SHS", figi: null}
+          - {cusip: "88160R101", period_of_report: "2024-03-31", name_of_issuer: "TESLA INC", title_of_class: "COM", figi: null}
+          - {cusip: "88160R102", period_of_report: "2024-03-31", name_of_issuer: "TESLA INC", title_of_class: "COM", figi: null}
+    expect:
+      rows:
+        - {cusip: "037833100", is_well_formed: true, has_valid_check_digit: true}
+        - {cusip: "037833101", is_well_formed: true, has_valid_check_digit: false}
+        - {cusip: "12345*@#0", is_well_formed: true, has_valid_check_digit: false}
+        - {cusip: "12345*@#7", is_well_formed: true, has_valid_check_digit: true}
+        - {cusip: "594918104", is_well_formed: true, has_valid_check_digit: true}
+        - {cusip: "88160R101", is_well_formed: true, has_valid_check_digit: true}
+        - {cusip: "88160R102", is_well_formed: true, has_valid_check_digit: false}
+        - {cusip: "G1151C101", is_well_formed: true, has_valid_check_digit: true}
+
+  - name: a_malformed_cusip_has_no_check_digit_result
+    description: Eight characters, a lower-case letter, a hyphen, a letter in the ninth place and a ninth character that is not there are not well formed, and their check digit is null, not false.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "03783310", period_of_report: "2024-03-31", name_of_issuer: "SHORT", title_of_class: "COM", figi: null}
+          - {cusip: "03783a100", period_of_report: "2024-03-31", name_of_issuer: "LOWER", title_of_class: "COM", figi: null}
+          - {cusip: "03783-100", period_of_report: "2024-03-31", name_of_issuer: "HYPHEN", title_of_class: "COM", figi: null}
+          - {cusip: "03783310A", period_of_report: "2024-03-31", name_of_issuer: "LETTER NINTH", title_of_class: "COM", figi: null}
+          - {cusip: "0378331000", period_of_report: "2024-03-31", name_of_issuer: "TEN", title_of_class: "COM", figi: null}
+    expect:
+      rows:
+        - {cusip: "03783-100", is_well_formed: false, has_valid_check_digit: null}
+        - {cusip: "03783310", is_well_formed: false, has_valid_check_digit: null}
+        - {cusip: "03783310A", is_well_formed: false, has_valid_check_digit: null}
+        - {cusip: "03783a100", is_well_formed: false, has_valid_check_digit: null}
+        - {cusip: "0378331000", is_well_formed: false, has_valid_check_digit: null}
+
+  - name: a_security_is_one_row_with_its_first_and_last_period
+    description: Holdings across three periods and several filers collapse to one row per CUSIP, every column present.
+    model: securities
+    given:
+      - input: ref('canonical_holdings')
+        rows:
+          - {cusip: "037833100", period_of_report: "2022-12-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: "BBG000B9XRY4"}
+          - {cusip: "037833100", period_of_report: "2023-12-31", name_of_issuer: "APPLE INC", title_of_class: "COM", figi: "BBG000B9XRY4"}
+          - {cusip: "037833100", period_of_report: "2024-03-31", name_of_issuer: "APPLE INC.", title_of_class: "COM", figi: "BBG000B9XRY4"}
+    expect:
+      format: sql
+      rows: |
+        select
+            '037833100' as cusip,
+            'APPLE INC.' as name_of_issuer,
+            'COM' as title_of_class,
+            'BBG000B9XRY4' as figi,
+            1 as figi_count,
+            true as is_well_formed,
+            true as has_valid_check_digit,
+            cast('2022-12-31' as date) as first_period,
+            cast('2024-03-31' as date) as last_period

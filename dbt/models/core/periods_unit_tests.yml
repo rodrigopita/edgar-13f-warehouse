@@ -1,0 +1,76 @@
+version: 2
+
+unit_tests:
+  - name: a_period_appears_once_however_many_filings_name_it
+    description: Three filings of two lineages name 2024-03-31 and one names 2024-06-30. Each period is one row, with its calendar year and quarter.
+    model: periods
+    given:
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31"}
+          - {accession_number: "B", cik: "1", period_of_report: "2024-03-31"}
+          - {accession_number: "C", cik: "2", period_of_report: "2024-03-31"}
+          - {accession_number: "D", cik: "2", period_of_report: "2024-06-30"}
+    expect:
+      format: sql
+      rows: |
+        select
+            cast('2024-03-31' as date) as period_of_report,
+            true as is_quarter_end,
+            cast('2023-12-31' as date) as previous_period,
+            2024 as calendar_year,
+            1 as calendar_quarter
+        union all
+        select cast('2024-06-30' as date), true, cast('2024-03-31' as date), 2024, 2
+
+  - name: the_previous_period_crosses_a_year_boundary
+    description: The quarter end three months before 2024-03-31 is 2023-12-31, in the year before.
+    model: periods
+    given:
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31"}
+    expect:
+      rows:
+        - {period_of_report: "2024-03-31", previous_period: "2023-12-31", calendar_year: 2024, calendar_quarter: 1}
+
+  - name: the_previous_period_is_a_quarter_end_not_the_same_day_three_months_back
+    description: Three months before 2024-06-30 and 2024-09-30 is the 30th, but the previous period is the quarter end, the 31st for March and the 30th for June.
+    model: periods
+    given:
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2024-06-30"}
+          - {accession_number: "B", cik: "1", period_of_report: "2024-09-30"}
+          - {accession_number: "C", cik: "1", period_of_report: "2024-12-31"}
+    expect:
+      rows:
+        - {period_of_report: "2024-06-30", previous_period: "2024-03-31"}
+        - {period_of_report: "2024-09-30", previous_period: "2024-06-30"}
+        - {period_of_report: "2024-12-31", previous_period: "2024-09-30"}
+
+  - name: a_period_off_the_quarter_end_has_no_previous_period
+    description: A month end that is not a quarter end, a day inside a quarter end month and 1900-01-01 are periods, not quarter ends, and have no previous period.
+    model: periods
+    given:
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2024-02-29"}
+          - {accession_number: "B", cik: "1", period_of_report: "2024-03-30"}
+          - {accession_number: "C", cik: "1", period_of_report: "1900-01-01"}
+    expect:
+      rows:
+        - {period_of_report: "1900-01-01", is_quarter_end: false, previous_period: null, calendar_year: 1900, calendar_quarter: 1}
+        - {period_of_report: "2024-02-29", is_quarter_end: false, previous_period: null, calendar_year: 2024, calendar_quarter: 1}
+        - {period_of_report: "2024-03-30", is_quarter_end: false, previous_period: null, calendar_year: 2024, calendar_quarter: 1}
+
+  - name: a_bogus_quarter_end_stays_in
+    description: A quarter end far from the others, such as 2001-09-30, is a quarter end like any other, and stays.
+    model: periods
+    given:
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2001-09-30"}
+    expect:
+      rows:
+        - {period_of_report: "2001-09-30", is_quarter_end: true, previous_period: "2001-06-30", calendar_year: 2001, calendar_quarter: 3}

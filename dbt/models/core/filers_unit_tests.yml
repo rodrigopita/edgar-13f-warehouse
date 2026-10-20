@@ -1,0 +1,71 @@
+version: 2
+
+unit_tests:
+  - name: the_name_is_the_one_on_the_latest_filing
+    description: A filer that renamed itself is known by the name on its latest filing. The first and last periods span every filing.
+    model: filers
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", filing_date: "2019-08-14", period_of_report: "2019-06-30", filing_manager_name: "OLD NAME LP"}
+          - {accession_number: "B", cik: "1", filing_date: "2021-11-12", period_of_report: "2021-09-30", filing_manager_name: "NEW NAME LLC"}
+          - {accession_number: "C", cik: "1", filing_date: "2020-05-15", period_of_report: "2020-03-31", filing_manager_name: "MIDDLE NAME INC"}
+          - {accession_number: "D", cik: "2", filing_date: "2020-02-14", period_of_report: "2019-12-31", filing_manager_name: "OTHER FILER"}
+    expect:
+      format: sql
+      rows: |
+        select
+            '1' as cik,
+            'NEW NAME LLC' as filer_name,
+            cast('2019-06-30' as date) as first_period,
+            cast('2021-09-30' as date) as last_period
+        union all
+        select '2', 'OTHER FILER', cast('2019-12-31' as date), cast('2019-12-31' as date)
+
+  - name: a_filing_without_a_name_is_skipped_for_the_name
+    description: The latest filing carries no name, so the name comes from the latest filing that does. That filing still counts toward the last period.
+    model: filers
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", filing_date: "2019-08-14", period_of_report: "2019-06-30", filing_manager_name: "FIRST NAME LP"}
+          - {accession_number: "B", cik: "1", filing_date: "2020-05-15", period_of_report: "2020-03-31", filing_manager_name: "SECOND NAME LP"}
+          - {accession_number: "C", cik: "1", filing_date: "2021-11-12", period_of_report: "2021-09-30", filing_manager_name: null}
+    expect:
+      rows:
+        - {cik: "1", filer_name: "SECOND NAME LP", first_period: "2019-06-30", last_period: "2021-09-30"}
+
+  - name: a_filer_with_no_name_at_all_has_a_null_name
+    description: When no filing of a filer carries a name, the filer is still a row, with a null name.
+    model: filers
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", filing_date: "2019-08-14", period_of_report: "2019-06-30", filing_manager_name: null}
+    expect:
+      rows:
+        - {cik: "1", filer_name: null, first_period: "2019-06-30", last_period: "2019-06-30"}
+
+  - name: filings_of_one_date_are_ordered_by_accession_for_the_name
+    description: Two filings of one date, as Advisors Asset Management filed them for 2019-03-31. The higher accession number is the later filing and gives the name.
+    model: filers
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "0001297376-19-000010", cik: "0001297376", filing_date: "2019-05-14", period_of_report: "2019-03-31", filing_manager_name: "ADVISORS ASSET MANAGEMENT, INC."}
+          - {accession_number: "0001297376-19-000011", cik: "0001297376", filing_date: "2019-05-14", period_of_report: "2019-03-31", filing_manager_name: "ADVISORS ASSET MANAGEMENT INC"}
+    expect:
+      rows:
+        - {cik: "0001297376", filer_name: "ADVISORS ASSET MANAGEMENT INC"}
+
+  - name: the_latest_filing_is_by_date_and_not_by_period
+    description: A late filing for an early period is the filer's latest filing, so its name stands even though its period is the first.
+    model: filers
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", filing_date: "2020-05-15", period_of_report: "2020-03-31", filing_manager_name: "NAME ON TIME"}
+          - {accession_number: "B", cik: "1", filing_date: "2021-01-20", period_of_report: "2019-12-31", filing_manager_name: "NAME ON LATE FILING"}
+    expect:
+      rows:
+        - {cik: "1", filer_name: "NAME ON LATE FILING", first_period: "2019-12-31", last_period: "2020-03-31"}

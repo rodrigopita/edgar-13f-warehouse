@@ -8,7 +8,12 @@ models:
         description: The key. An accession on both paths fails the unique test; the precedence rule waits for the first overlap.
         tests: [unique, not_null]
       - name: cik
-        tests: [not_null]
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('filers')
+                field: cik
       - name: filing_date
         tests: [not_null]
       - name: period_of_report
@@ -37,6 +42,13 @@ models:
               arguments:
                 to: ref('filings')
                 field: accession_number
+      - name: period_of_report
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('periods')
+                field: period_of_report
       - name: filing_position
         tests: [not_null]
       - name: filing_role
@@ -142,3 +154,36 @@ models:
                   - value_off_yardstick_by_a_thousand
       - name: accession_number
         tests: [not_null]
+
+  - name: periods
+    description: One row per period that a filing names, the calendar quarter end it reports on, with the quarter end before it. A period that is no quarter end stays in, with no previous period.
+    columns:
+      - name: period_of_report
+        description: The key, the period as EDGAR records it.
+        tests: [unique, not_null]
+      - name: is_quarter_end
+        description: Whether the period is the last day of March, June, September or December.
+      - name: previous_period
+        description: The quarter end three months before, null unless the period is a quarter end.
+
+  - name: filers
+    description: One row per filer, with the name on its latest filing that carries one and the span of periods it filed for.
+    columns:
+      - name: cik
+        description: The key.
+        tests: [unique, not_null]
+      - name: filer_name
+        description: The filing manager name on the filer's latest named filing, by filing date then accession number.
+
+  - name: securities
+    description: One row per CUSIP in the canonical holdings, with the name and class filers most often reported in its last period, the FIGI where they reported only one, and whether the CUSIP is well formed and passes its check digit.
+    columns:
+      - name: cusip
+        description: The key.
+        tests: [unique, not_null]
+      - name: figi_count
+        description: The number of distinct FIGIs reported for the CUSIP.
+      - name: is_well_formed
+        description: Nine characters, the first eight a digit, an upper-case letter or one of * @ #, the ninth a digit.
+      - name: has_valid_check_digit
+        description: The standard CUSIP check digit holds. Null when the CUSIP is not well formed.
