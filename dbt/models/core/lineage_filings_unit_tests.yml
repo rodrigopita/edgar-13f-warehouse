@@ -5,6 +5,8 @@ unit_tests:
     description: A lineage of one original is in effect whole.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2018-06-30", filing_date: "2018-08-14", submission_type: "13F-HR", amendment_type: null}
@@ -16,6 +18,8 @@ unit_tests:
     description: Brookfield Corp /ON/, period 2018-06-30, as filed. The restatement of 2018-11-15 stands in for the original and the restatement of the day before; the addition of 2018-12-14 supplements it.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "0000950123-18-008668", cik: "0001001085", period_of_report: "2018-06-30", filing_date: "2018-08-14", submission_type: "13F-HR", amendment_type: null}
@@ -33,6 +37,8 @@ unit_tests:
     description: A filer that files 13F-HR twice for one period has resubmitted the list; the later one stands in for the first.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2020-06-30", filing_date: "2020-08-10", submission_type: "13F-HR", amendment_type: null}
@@ -46,6 +52,8 @@ unit_tests:
     description: When no original or restatement is in the data, every addition of the lineage is in effect.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2012-12-31", filing_date: "2013-05-15", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS"}
@@ -59,6 +67,8 @@ unit_tests:
     description: Notices and notice amendments take a position in the lineage, carry no holdings and leave the holdings report in effect, before or after it.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2021-03-31", filing_date: "2021-05-10", submission_type: "13F-NT", amendment_type: null}
@@ -74,6 +84,8 @@ unit_tests:
     description: A restatement resubmits the entire list, so an addition filed before it is out of effect with the original.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2019-09-30", filing_date: "2019-11-14", submission_type: "13F-HR", amendment_type: null}
@@ -89,6 +101,8 @@ unit_tests:
     description: An amendment whose cover names neither type resubmits the list, the base case of the SEC's procedure.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2015-12-31", filing_date: "2016-02-12", submission_type: "13F-HR", amendment_type: null}
@@ -102,6 +116,8 @@ unit_tests:
     description: Under one submitter's prefix the last six digits count its submissions, so the higher one was filed later and is the effective restatement.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "0000950123-18-012061", cik: "1", period_of_report: "2018-06-30", filing_date: "2018-11-15", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT"}
@@ -117,6 +133,8 @@ unit_tests:
     description: A restatement supersedes nothing outside its own filer and period.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2022-03-31", filing_date: "2022-05-13", submission_type: "13F-HR", amendment_type: null}
@@ -134,6 +152,8 @@ unit_tests:
     description: Advisors Asset Management, period 2019-03-31. The restatement is amendment 1 and the addition amendment 2, the SEC's order for a correction with additions, although the addition was submitted first; the addition supplements the restatement.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "0000891092-19-005843", cik: "0001297376", period_of_report: "2019-03-31", filing_date: "2019-05-15", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
@@ -149,6 +169,8 @@ unit_tests:
     description: An original carries no amendment number and comes first among the filings of its date, whatever the accession order.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "B", cik: "1", period_of_report: "2023-12-31", filing_date: "2024-02-14", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
@@ -162,6 +184,8 @@ unit_tests:
     description: The submission type decides original against amendment, so a later 13F-HR whose cover names NEW HOLDINGS still resubmits the list and stands in for the first.
     model: lineage_filings
     given:
+      - input: ref('addition_coverage')
+        rows: []
       - input: ref('filings')
         rows:
           - {accession_number: "A", cik: "1", period_of_report: "2020-06-30", filing_date: "2020-08-10", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
@@ -170,3 +194,48 @@ unit_tests:
       rows:
         - {accession_number: "A", filing_role: "original", is_superseded: true, is_contributing: false}
         - {accession_number: "B", filing_role: "restatement", is_superseded: false, is_contributing: true}
+
+  - name: the_second_of_two_resubmitted_additions_is_the_effective_filing
+    description: Morgan Stanley, period 2024-03-31. Both NEW HOLDINGS amendments resubmit the whole list of the original, so addition_coverage reads each as a restatement; the second is the effective filing and the first and the original are superseded. Accessions are the filings on EDGAR; the dates are not.
+    model: lineage_filings
+    given:
+      - input: ref('addition_coverage')
+        rows:
+          - {accession_number: "0000895421-24-000436", compared_accession_number: "0000895421-24-000355", is_read_as_restatement: true}
+          - {accession_number: "0000895421-24-000486", compared_accession_number: "0000895421-24-000355", is_read_as_restatement: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "0000895421-24-000355", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null}
+          - {accession_number: "0000895421-24-000436", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "0000895421-24-000486", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-06-03", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+    expect:
+      rows:
+        - {accession_number: "0000895421-24-000355", filing_position: 1, filing_role: "original", is_superseded: true, is_contributing: false}
+        - {accession_number: "0000895421-24-000436", filing_position: 2, filing_role: "restatement", is_superseded: true, is_contributing: false}
+        - {accession_number: "0000895421-24-000486", filing_position: 3, filing_role: "restatement", is_superseded: false, is_contributing: true}
+
+  - name: an_addition_that_is_not_read_as_a_restatement_still_supplements
+    description: An addition with coverage under 0.9, and one with no row in addition_coverage at all, stay additions and contribute beside the original. A later addition read as a restatement takes effect and supersedes both of them and the original.
+    model: lineage_filings
+    given:
+      - input: ref('addition_coverage')
+        rows:
+          - {accession_number: "A1", compared_accession_number: "O", is_read_as_restatement: false}
+          - {accession_number: "B1", compared_accession_number: "P", is_read_as_restatement: false}
+          - {accession_number: "B2", compared_accession_number: "P", is_read_as_restatement: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2020-09-30", filing_date: "2020-11-10", submission_type: "13F-HR", amendment_type: null}
+          - {accession_number: "A1", cik: "1", period_of_report: "2020-09-30", filing_date: "2021-02-01", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "A2", cik: "1", period_of_report: "2020-09-30", filing_date: "2021-02-15", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+          - {accession_number: "P", cik: "2", period_of_report: "2020-09-30", filing_date: "2020-11-10", submission_type: "13F-HR", amendment_type: null}
+          - {accession_number: "B1", cik: "2", period_of_report: "2020-09-30", filing_date: "2021-02-01", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "B2", cik: "2", period_of_report: "2020-09-30", filing_date: "2021-03-01", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+    expect:
+      rows:
+        - {accession_number: "O", filing_role: "original", is_superseded: false, is_contributing: true}
+        - {accession_number: "A1", filing_role: "addition", is_superseded: false, is_contributing: true}
+        - {accession_number: "A2", filing_role: "addition", is_superseded: false, is_contributing: true}
+        - {accession_number: "P", filing_role: "original", is_superseded: true, is_contributing: false}
+        - {accession_number: "B1", filing_role: "addition", is_superseded: true, is_contributing: false}
+        - {accession_number: "B2", filing_role: "restatement", is_superseded: false, is_contributing: true}

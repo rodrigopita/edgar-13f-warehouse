@@ -1,0 +1,167 @@
+version: 2
+
+unit_tests:
+  - name: an_addition_compares_with_the_latest_typed_original_or_restatement_before_it
+    description: "The compared filing is the latest filing before the addition in filing order whose role as typed is original or restatement: not an earlier original, not a restatement filed after the addition, not another addition, not a notice."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "R", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-10", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT", amendment_no: 1}
+          - {accession_number: "N", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-12", submission_type: "13F-NT/A", amendment_type: null, amendment_no: null}
+          - {accession_number: "A0", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-14", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 3}
+          - {accession_number: "R2", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-06-01", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT", amendment_no: 4}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "O", cusip: "C1"}
+          - {accession_number: "O", cusip: "C2"}
+          - {accession_number: "R", cusip: "X1"}
+          - {accession_number: "R", cusip: "X2"}
+          - {accession_number: "A0", cusip: "X1"}
+          - {accession_number: "A", cusip: "X1"}
+          - {accession_number: "A", cusip: "X2"}
+          - {accession_number: "R2", cusip: "C1"}
+          - {accession_number: "R2", cusip: "C2"}
+    expect:
+      rows:
+        - {accession_number: "A0", cik: "1", compared_accession_number: "R", compared_securities: 2, repeated_securities: 1, coverage: 0.5, is_read_as_restatement: false}
+        - {accession_number: "A", cik: "1", compared_accession_number: "R", compared_securities: 2, repeated_securities: 2, coverage: 1.0, is_read_as_restatement: true}
+
+  - name: coverage_of_exactly_nine_tenths_reads_as_a_restatement
+    description: "Nine of the ten securities of the compared filing: coverage 0.9, which is the threshold, so the addition is read as a restatement."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "O", cusip: "C1"}
+          - {accession_number: "O", cusip: "C2"}
+          - {accession_number: "O", cusip: "C3"}
+          - {accession_number: "O", cusip: "C4"}
+          - {accession_number: "O", cusip: "C5"}
+          - {accession_number: "O", cusip: "C6"}
+          - {accession_number: "O", cusip: "C7"}
+          - {accession_number: "O", cusip: "C8"}
+          - {accession_number: "O", cusip: "C9"}
+          - {accession_number: "O", cusip: "C10"}
+          - {accession_number: "A", cusip: "C1"}
+          - {accession_number: "A", cusip: "C2"}
+          - {accession_number: "A", cusip: "C3"}
+          - {accession_number: "A", cusip: "C4"}
+          - {accession_number: "A", cusip: "C5"}
+          - {accession_number: "A", cusip: "C6"}
+          - {accession_number: "A", cusip: "C7"}
+          - {accession_number: "A", cusip: "C8"}
+          - {accession_number: "A", cusip: "C9"}
+    expect:
+      rows:
+        - {accession_number: "A", cik: "1", compared_accession_number: "O", compared_securities: 10, repeated_securities: 9, coverage: 0.9, is_read_as_restatement: true}
+
+  - name: coverage_just_under_nine_tenths_stays_an_addition
+    description: "Eight of the nine securities of the compared filing: under 0.9, so the addition stays an addition."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "O", cusip: "C1"}
+          - {accession_number: "O", cusip: "C2"}
+          - {accession_number: "O", cusip: "C3"}
+          - {accession_number: "O", cusip: "C4"}
+          - {accession_number: "O", cusip: "C5"}
+          - {accession_number: "O", cusip: "C6"}
+          - {accession_number: "O", cusip: "C7"}
+          - {accession_number: "O", cusip: "C8"}
+          - {accession_number: "O", cusip: "C9"}
+          - {accession_number: "A", cusip: "C1"}
+          - {accession_number: "A", cusip: "C2"}
+          - {accession_number: "A", cusip: "C3"}
+          - {accession_number: "A", cusip: "C4"}
+          - {accession_number: "A", cusip: "C5"}
+          - {accession_number: "A", cusip: "C6"}
+          - {accession_number: "A", cusip: "C7"}
+          - {accession_number: "A", cusip: "C8"}
+    expect:
+      rows:
+        - {accession_number: "A", cik: "1", compared_accession_number: "O", compared_securities: 9, repeated_securities: 8, is_read_as_restatement: false}
+
+  - name: coverage_counts_distinct_securities_of_the_compared_filing
+    description: "Holdings of one security count once, and securities the addition adds beyond the compared filing do not lower coverage: the compared filing holds four securities, one of them twice; the addition holds two of them, one twice, and three others."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "O", cusip: "C1"}
+          - {accession_number: "O", cusip: "C2"}
+          - {accession_number: "O", cusip: "C3"}
+          - {accession_number: "O", cusip: "C4"}
+          - {accession_number: "O", cusip: "C4"}
+          - {accession_number: "A", cusip: "C1"}
+          - {accession_number: "A", cusip: "C2"}
+          - {accession_number: "A", cusip: "C2"}
+          - {accession_number: "A", cusip: "Y1"}
+          - {accession_number: "A", cusip: "Y2"}
+          - {accession_number: "A", cusip: "Y3"}
+    expect:
+      rows:
+        - {accession_number: "A", cik: "1", compared_accession_number: "O", compared_securities: 4, repeated_securities: 2, coverage: 0.5, is_read_as_restatement: false}
+
+  - name: coverage_is_null_without_a_compared_filing_or_without_its_holdings
+    description: "An addition with no original or restatement before it has no compared filing, and one whose compared filing has no holdings has nothing to repeat; coverage is null and the addition stays an addition. The first lineage opens with the addition itself, the second compares with a filing that has no holdings, the third has only a restatement filed after the addition."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "B0", cik: "2", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "B", cik: "2", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "C", cik: "3", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "CR", cik: "3", period_of_report: "2024-03-31", filing_date: "2024-06-01", submission_type: "13F-HR/A", amendment_type: "RESTATEMENT", amendment_no: 2}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "A", cusip: "C1"}
+          - {accession_number: "B", cusip: "C1"}
+          - {accession_number: "C", cusip: "C1"}
+          - {accession_number: "CR", cusip: "C1"}
+    expect:
+      rows:
+        - {accession_number: "A", cik: "1", compared_accession_number: null, compared_securities: null, repeated_securities: null, coverage: null, is_read_as_restatement: false}
+        - {accession_number: "B", cik: "2", compared_accession_number: "B0", compared_securities: 0, repeated_securities: 0, coverage: null, is_read_as_restatement: false}
+        - {accession_number: "C", cik: "3", compared_accession_number: null, compared_securities: null, repeated_securities: null, coverage: null, is_read_as_restatement: false}
+
+  - name: two_resubmitted_additions_both_compare_with_the_original
+    description: "Morgan Stanley, period 2024-03-31: 0000895421-24-000436 and 0000895421-24-000486 each resubmit the list of 0000895421-24-000355 under the type NEW HOLDINGS. Both compare with the original, since the typed role of the first is addition, and both repeat all of it. Accessions are the filings on EDGAR; the dates and the holdings are not."
+    model: addition_coverage
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "0000895421-24-000355", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", amendment_type: null, amendment_no: null}
+          - {accession_number: "0000895421-24-000436", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 1}
+          - {accession_number: "0000895421-24-000486", cik: "0000895421", period_of_report: "2024-03-31", filing_date: "2024-06-03", submission_type: "13F-HR/A", amendment_type: "NEW HOLDINGS", amendment_no: 2}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "0000895421-24-000355", cusip: "C1"}
+          - {accession_number: "0000895421-24-000355", cusip: "C2"}
+          - {accession_number: "0000895421-24-000355", cusip: "C3"}
+          - {accession_number: "0000895421-24-000436", cusip: "C1"}
+          - {accession_number: "0000895421-24-000436", cusip: "C2"}
+          - {accession_number: "0000895421-24-000436", cusip: "C3"}
+          - {accession_number: "0000895421-24-000486", cusip: "C1"}
+          - {accession_number: "0000895421-24-000486", cusip: "C2"}
+          - {accession_number: "0000895421-24-000486", cusip: "C3"}
+    expect:
+      rows:
+        - {accession_number: "0000895421-24-000436", cik: "0000895421", compared_accession_number: "0000895421-24-000355", compared_securities: 3, repeated_securities: 3, coverage: 1.0, is_read_as_restatement: true}
+        - {accession_number: "0000895421-24-000486", cik: "0000895421", compared_accession_number: "0000895421-24-000355", compared_securities: 3, repeated_securities: 3, coverage: 1.0, is_read_as_restatement: true}

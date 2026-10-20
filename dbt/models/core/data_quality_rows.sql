@@ -138,7 +138,7 @@ number_ordered as (
     from filing_state
     where filing_role <> 'notice'
     qualify row_number() over (
-        partition by cik, period_of_report order by filing_date, amendment_no nulls first, accession_number
+        partition by cik, period_of_report order by {{ filing_order() }}
     ) <> row_number() over (
         partition by cik, period_of_report order by filing_date, accession_number
     )
@@ -322,6 +322,78 @@ repeated_securities as (
         and earlier.cusip = later.cusip
     where later.filing_role = 'addition'
     group by later.cik, later.period_of_report, later.accession_number, later.origin
+),
+
+restated_additions as (
+    select
+        'addition_read_as_restatement' as check_name,
+        state.cik,
+        state.period_of_report,
+        state.accession_number,
+        state.origin,
+        'repeats ' || coverage.repeated_securities || ' of the ' || coverage.compared_securities
+            || ' securities of ' || coverage.compared_accession_number
+            || ', the filing it amends; read as a restatement' as detail
+    from {{ ref('addition_coverage') }} as coverage
+    inner join filing_state as state
+        on state.accession_number = coverage.accession_number
+    where coverage.is_read_as_restatement
+),
+
+copy_filings as (
+    select
+        state.accession_number,
+        state.cik,
+        state.period_of_report,
+        state.origin,
+        state.filing_position,
+        state.filing_role
+    from filing_state as state
+    inner join lineages_with_additions as lineages
+        on lineages.cik = state.cik
+        and lineages.period_of_report = state.period_of_report
+    where state.is_contributing
+),
+
+copy_holdings as (
+    select
+        filings.accession_number,
+        filings.cik,
+        filings.period_of_report,
+        filings.origin,
+        filings.filing_position,
+        filings.filing_role,
+        holdings.cusip,
+        holdings.put_call,
+        holdings.shares_or_principal_amount,
+        holdings.shares_or_principal_amount_type,
+        holdings.investment_discretion,
+        holdings.other_manager_sequence_numbers
+    from copy_filings as filings
+    inner join {{ ref('holdings') }} as holdings
+        on holdings.accession_number = filings.accession_number
+),
+
+copy_flags as (
+    select
+        *,
+        {{ is_copied_holding() }} as is_copied
+    from copy_holdings
+),
+
+copied_holdings as (
+    select
+        'copied_holding_in_addition' as check_name,
+        cik,
+        period_of_report,
+        accession_number,
+        origin,
+        count(case when is_copied then 1 end) || ' of its ' || count(*)
+            || ' holdings copy holdings already in effect; they are left out of canonical holdings' as detail
+    from copy_flags
+    where filing_role = 'addition'
+    group by cik, period_of_report, accession_number, origin
+    having count(case when is_copied then 1 end) > 0
 )
 
 select * from untyped_amendments
@@ -335,5 +407,7 @@ union all select * from number_ordered
 union all select * from summaries
 union all select * from unrestated_additions
 union all select * from repeated_securities
+union all select * from restated_additions
+union all select * from copied_holdings
 union all select * from unit_overrides
 union all select * from off_yardstick

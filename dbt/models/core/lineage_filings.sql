@@ -14,6 +14,14 @@
 -- holdings report before it is superseded. With none present, every
 -- addition contributes. Notices take a position and do neither.
 --
+-- An addition that repeats 90 percent or more of the securities of the
+-- filing it amends is a restatement in all but its cover, and counts as
+-- one; addition_coverage measures it, and the typed role the rules above
+-- describe is the macro typed_filing_role, shared with that model. With
+-- two such additions in a row, as Morgan Stanley filed for 2024-03-31, the
+-- second is the effective filing and the first and the original are
+-- superseded.
+--
 -- Plain SQL on purpose: the unit tests beside this model ran red and green
 -- in DuckDB before they ran in Snowflake.
 
@@ -25,26 +33,32 @@ with ordered as (
         submission_type,
         amendment_type,
         amendment_no,
+        filing_date,
         row_number() over (
             partition by cik, period_of_report
-            order by filing_date, amendment_no nulls first, accession_number
+            order by {{ filing_order() }}
         ) as filing_position
     from {{ ref('filings') }}
 ),
 
-roled as (
+typed as (
     select
         *,
-        case
-            when submission_type like '13F-NT%' then 'notice'
-            when submission_type = '13F-HR' and filing_position = min(
-                case when submission_type = '13F-HR' then filing_position end
-            ) over (partition by cik, period_of_report) then 'original'
-            when submission_type = '13F-HR' then 'restatement'
-            when amendment_type = 'NEW HOLDINGS' then 'addition'
-            else 'restatement'
-        end as filing_role
+        {{ typed_filing_role() }} as typed_role
     from ordered
+),
+
+roled as (
+    select
+        typed.*,
+        case
+            when typed.typed_role = 'addition' and coalesce(coverage.is_read_as_restatement, false)
+                then 'restatement'
+            else typed.typed_role
+        end as filing_role
+    from typed
+    left join {{ ref('addition_coverage') }} as coverage
+        on coverage.accession_number = typed.accession_number
 ),
 
 effective as (

@@ -29,8 +29,8 @@ A filing that says another manager reports all of the filer's holdings for a per
 _Avoid_: NT, notice filing, notice report
 
 **Holding**:
-One entry of a holdings report's information table: a security, its class, the amount held, its value, the discretion it is held under and the voting authority over it. The same security can appear in several holdings of one filing, one per discretion or other manager.
-_Avoid_: position, line, row, info table entry
+One entry of a holdings report's information table: a security, its class, the amount held, its value, the discretion it is held under and the voting authority over it. The same security can appear in several holdings of one filing, one per discretion or other manager; together they make a position.
+_Avoid_: line, row, info table entry
 
 **Security**:
 What a holding is of, identified by CUSIP, and by FIGI as well in filings from 2023.
@@ -55,7 +55,7 @@ An amendment that resubmits the entire holdings list as corrected. It stands in 
 _Avoid_: full amendment, replacement, resubmission
 
 **Addition**:
-An amendment that lists only holdings being added and supplements the lists filed before it instead of replacing them. The cover page calls it adding new holdings entries, and the data sets record it as NEW HOLDINGS.
+An amendment that lists only holdings being added and supplements the lists filed before it instead of replacing them. The cover page calls it adding new holdings entries, and the data sets record it as NEW HOLDINGS. Filers also resubmit whole lists under it, which coverage tells apart.
 _Avoid_: new holdings amendment, supplement, partial amendment
 
 **Confidential-treatment release**:
@@ -92,6 +92,14 @@ _Avoid_: standing filing, current restatement
 A filing in a lineage whose holdings are in effect: the latest restatement, or the original when none exists, and every addition filed after it.
 _Avoid_: active filing, live filing
 
+**Coverage**:
+The share of the securities of the filing an addition amends that the addition lists again. An addition with a coverage of nine tenths or more resubmits the list and is read as a restatement.
+_Avoid_: overlap, repeat rate
+
+**Copied holding**:
+A holding of an addition identical to one already in effect for the same filer and period, in security, put or call, amount, discretion and other managers. It is listed twice and held once, so it counts once.
+_Avoid_: duplicate, repeated holding
+
 **Canonical holdings**:
 The holdings of a filer for a period with every amendment applied: the holdings of the contributing filings, nothing else. The warehouse's answer to what the filer reported.
 _Avoid_: final holdings, resolved holdings, current holdings, latest holdings
@@ -99,6 +107,32 @@ _Avoid_: final holdings, resolved holdings, current holdings, latest holdings
 **Data-quality row**:
 A recorded fact about a filing or lineage that the rules could not settle or that the source contradicts, such as a holdings total that does not match the summary, an untyped amendment, or an amendment without an original. It travels with the data instead of stopping the build.
 _Avoid_: error, exception, warning, anomaly
+
+## Positions
+
+**Position**:
+A filer's canonical holdings of one security in one period, taken together whatever discretion or other manager each is held under. A put or a call on a security is a position of its own, apart from the security.
+_Avoid_: stake, line, holding
+
+**Previous period**:
+The period three months before another. A filer's positions are compared with the previous period's only when the filer has canonical holdings in both; a period after a notice, a skipped period or a filer's first report has no entries or exits.
+_Avoid_: last quarter, prior quarter, QoQ
+
+**Entry**:
+A position a filer has in a period and did not have in the previous period.
+_Avoid_: new position, buy, opening
+
+**Exit**:
+A position a filer had in the previous period and does not have in this one.
+_Avoid_: sale, sell-off, closing
+
+**Increase**:
+A position held in both periods whose share or principal amount, stated the same way in both, grew. The amount is the measure and not the value, which moves with price. A 13F lists holdings, not trades, so an increase may net several trades or be a stock split.
+_Avoid_: buy, purchase, accumulation
+
+**Decrease**:
+A position held in both periods whose share or principal amount, stated the same way in both, shrank. Read like an increase.
+_Avoid_: sell, sale, trim
 
 ## Sources
 

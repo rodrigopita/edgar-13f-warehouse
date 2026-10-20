@@ -62,6 +62,26 @@ models:
       - name: is_contributing
         tests: [not_null]
 
+  - name: addition_coverage
+    description: One row per filing typed as an addition, with the filing it amends and how much of that filing's securities it repeats. At 0.9 or more it is read as a restatement.
+    columns:
+      - name: accession_number
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('filings')
+                field: accession_number
+      - name: compared_accession_number
+        tests:
+          - relationships:
+              arguments:
+                to: ref('filings')
+                field: accession_number
+      - name: is_read_as_restatement
+        tests: [not_null]
+
   - name: filing_value_units
     description: The unit each filing with holdings reports market value in, read from its median value per share as filed, with the filing-date rule beside it.
     columns:
@@ -149,6 +169,8 @@ models:
                   - summary_disagrees_with_holdings
                   - superseded_addition_not_restated
                   - repeated_security_in_addition
+                  - addition_read_as_restatement
+                  - copied_holding_in_addition
                   - filing_order_set_by_amendment_number
                   - value_unit_overrides_filing_date_rule
                   - value_off_yardstick_by_a_thousand

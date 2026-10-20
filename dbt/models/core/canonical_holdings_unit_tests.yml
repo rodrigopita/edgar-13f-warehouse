@@ -1,0 +1,186 @@
+version: 2
+
+unit_tests:
+  - name: an_addition_loses_the_holdings_it_copies_and_keeps_the_rest
+    description: "Janus Henderson shape, period 2022-09-30. The addition repeats most of the original and adds a few; a holding identical to one of the original is a copy and leaves, a holding of a security the original also has but with another amount stays, and a new security stays."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 200 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C4' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", filing_date: "2024-05-01"}
+          - {accession_number: "A", filing_date: "2024-06-01"}
+    expect:
+      rows:
+        - {accession_number: "O", cusip: "C1", holding_key: 1}
+        - {accession_number: "O", cusip: "C2", holding_key: 2}
+        - {accession_number: "O", cusip: "C3", holding_key: 3}
+        - {accession_number: "A", cusip: "C2", holding_key: 2}
+        - {accession_number: "A", cusip: "C4", holding_key: 3}
+
+  - name: an_addition_that_repeats_securities_without_copies_keeps_every_holding
+    description: "Prudential shape, period 2020-09-30. The addition lists other managers' books of securities the original also holds: same security, different other managers, discretion, amount type or put or call, so nothing is identical and everything sums."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(1) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 4 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C4' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 4 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(2) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'DFND' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'PRN' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 4 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C4' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, 'Put' as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 4 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", filing_date: "2024-05-01"}
+          - {accession_number: "A", filing_date: "2024-06-01"}
+    expect:
+      rows:
+        - {accession_number: "O", cusip: "C1", holding_key: 1}
+        - {accession_number: "O", cusip: "C2", holding_key: 2}
+        - {accession_number: "O", cusip: "C3", holding_key: 3}
+        - {accession_number: "O", cusip: "C4", holding_key: 4}
+        - {accession_number: "A", cusip: "C1", holding_key: 1}
+        - {accession_number: "A", cusip: "C2", holding_key: 2}
+        - {accession_number: "A", cusip: "C3", holding_key: 3}
+        - {accession_number: "A", cusip: "C4", holding_key: 4}
+
+  - name: a_copy_compares_the_other_manager_array_as_filed_in_order
+    description: "The other managers are an array compared as filed: the same numbers in the same order are a copy, the same numbers in another order are not, and two empty arrays are a copy."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(1, 2) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(1, 2) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(2, 1) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct(1, 2) as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", filing_date: "2024-05-01"}
+          - {accession_number: "A", filing_date: "2024-06-01"}
+    expect:
+      rows:
+        - {accession_number: "O", cusip: "C1", holding_key: 1}
+        - {accession_number: "O", cusip: "C2", holding_key: 2}
+        - {accession_number: "O", cusip: "C3", holding_key: 3}
+        - {accession_number: "A", cusip: "C1", holding_key: 1}
+
+  - name: a_copy_compares_a_null_put_or_call_as_equal_to_null
+    description: "A holding with no put or call is a copy of an earlier holding with none; a put against a holding with none is not a copy; a call against a call is."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, 'Put' as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, 'Call' as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, 'Call' as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", filing_date: "2024-05-01"}
+          - {accession_number: "A", filing_date: "2024-06-01"}
+    expect:
+      rows:
+        - {accession_number: "O", cusip: "C1", holding_key: 1}
+        - {accession_number: "O", cusip: "C2", holding_key: 2}
+        - {accession_number: "O", cusip: "C3", holding_key: 3}
+        - {accession_number: "A", cusip: "C2", holding_key: 2}
+
+  - name: holdings_repeated_within_one_filing_are_kept
+    description: "A filing may list the same holding twice, so holdings of one filing are never compared with each other: the original and the addition each hold identical rows twice, and only the addition rows that match the original leave."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'O' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C3' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A' as accession_number, 'data_set' as origin, 3 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 3 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", filing_date: "2024-05-01"}
+          - {accession_number: "A", filing_date: "2024-06-01"}
+    expect:
+      rows:
+        - {accession_number: "O", cusip: "C1", holding_key: 1}
+        - {accession_number: "O", cusip: "C1", holding_key: 2}
+        - {accession_number: "O", cusip: "C2", holding_key: 3}
+        - {accession_number: "A", cusip: "C3", holding_key: 1}
+        - {accession_number: "A", cusip: "C3", holding_key: 2}
+
+  - name: a_holding_is_compared_with_earlier_contributing_filings_of_its_lineage_only
+    description: "A superseded filing is out of effect, so its holdings are not compared; a later addition does copy an earlier addition; the identical holding of another lineage is not compared."
+    model: canonical_holdings
+    given:
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'S' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'R' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C2' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A1' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C1' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A1' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C5' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'A2' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C5' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+          union all select 'A2' as accession_number, 'data_set' as origin, 2 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C6' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 2 as source_row
+          union all select 'X' as accession_number, 'data_set' as origin, 1 as holding_key, 'n' as name_of_issuer, 't' as title_of_class, 'C6' as cusip, 'f' as figi, 1 as value_as_filed, 'dollars' as value_unit, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers, 1 as voting_sole, 0 as voting_shared, 0 as voting_none, 'z' as source_file, 1 as source_row
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "S", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: false}
+          - {accession_number: "R", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "restatement", is_contributing: true}
+          - {accession_number: "A1", cik: "1", period_of_report: "2024-03-31", filing_position: 3, filing_role: "addition", is_contributing: true}
+          - {accession_number: "A2", cik: "1", period_of_report: "2024-03-31", filing_position: 4, filing_role: "addition", is_contributing: true}
+          - {accession_number: "X", cik: "2", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", is_contributing: true}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "S", filing_date: "2024-05-01"}
+          - {accession_number: "R", filing_date: "2024-05-10"}
+          - {accession_number: "A1", filing_date: "2024-06-01"}
+          - {accession_number: "A2", filing_date: "2024-06-02"}
+          - {accession_number: "X", filing_date: "2024-05-01"}
+    expect:
+      rows:
+        - {accession_number: "R", cusip: "C2", holding_key: 1}
+        - {accession_number: "A1", cusip: "C1", holding_key: 1}
+        - {accession_number: "A1", cusip: "C5", holding_key: 2}
+        - {accession_number: "A2", cusip: "C6", holding_key: 2}
+        - {accession_number: "X", cusip: "C6", holding_key: 1}

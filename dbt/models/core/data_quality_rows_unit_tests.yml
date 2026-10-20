@@ -1,0 +1,58 @@
+version: 2
+
+unit_tests:
+  - name: an_addition_read_as_a_restatement_is_recorded_with_the_filing_it_amends
+    description: "A resubmitted addition gets one row that says how many securities of the filing it amends it repeats and which filing that is."
+    model: data_quality_rows
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", is_amendment: false, cover_is_amendment: false, amendment_type: null, amendment_no: null, report_type: "13F HOLDINGS REPORT", report_calendar_or_quarter: "2024-03-31", table_entry_total: 0, table_value_total_as_filed: 0, origin: "data_set"}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", is_amendment: true, cover_is_amendment: true, amendment_type: "NEW HOLDINGS", amendment_no: 1, report_type: "13F HOLDINGS REPORT", report_calendar_or_quarter: "2024-03-31", table_entry_total: 0, table_value_total_as_filed: 0, origin: "data_set"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", effective_position: 2, is_superseded: true, is_contributing: false}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "restatement", effective_position: 2, is_superseded: false, is_contributing: true}
+      - input: ref('addition_coverage')
+        rows:
+          - {accession_number: "A", compared_accession_number: "O", compared_securities: 10, repeated_securities: 9, coverage: 0.9, is_read_as_restatement: true}
+      - input: ref('filing_value_units')
+        rows: []
+      - input: ref('holdings')
+        rows: []
+    expect:
+      rows:
+        - {check_name: "addition_read_as_restatement", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set", detail: "repeats 9 of the 10 securities of O, the filing it amends; read as a restatement"}
+
+  - name: an_addition_that_copies_holdings_is_recorded_with_how_many
+    description: "An addition that lists holdings identical to holdings already in effect gets one row with the count of copies out of its holdings; an addition without copies gets none. The existing check for repeated securities fires on the same filing, since the copies repeat securities."
+    model: data_quality_rows
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-01", submission_type: "13F-HR", is_amendment: false, cover_is_amendment: false, amendment_type: null, amendment_no: null, report_type: "13F HOLDINGS REPORT", report_calendar_or_quarter: "2024-03-31", table_entry_total: 3, table_value_total_as_filed: 3, origin: "data_set"}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-20", submission_type: "13F-HR/A", is_amendment: true, cover_is_amendment: true, amendment_type: "NEW HOLDINGS", amendment_no: 1, report_type: "13F HOLDINGS REPORT", report_calendar_or_quarter: "2024-03-31", table_entry_total: 3, table_value_total_as_filed: 3, origin: "data_set"}
+          - {accession_number: "B", cik: "1", period_of_report: "2024-03-31", filing_date: "2024-05-21", submission_type: "13F-HR/A", is_amendment: true, cover_is_amendment: true, amendment_type: "NEW HOLDINGS", amendment_no: 2, report_type: "13F HOLDINGS REPORT", report_calendar_or_quarter: "2024-03-31", table_entry_total: 1, table_value_total_as_filed: 1, origin: "data_set"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", effective_position: 1, is_superseded: false, is_contributing: true}
+          - {accession_number: "A", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", effective_position: 1, is_superseded: false, is_contributing: true}
+          - {accession_number: "B", cik: "1", period_of_report: "2024-03-31", filing_position: 3, filing_role: "addition", effective_position: 1, is_superseded: false, is_contributing: true}
+      - input: ref('addition_coverage')
+        rows: []
+      - input: ref('filing_value_units')
+        rows: []
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'O' as accession_number, 1 as holding_key, 'C1' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'O' as accession_number, 2 as holding_key, 'C2' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'O' as accession_number, 3 as holding_key, 'C3' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'A' as accession_number, 1 as holding_key, 'C1' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'A' as accession_number, 2 as holding_key, 'C2' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'A' as accession_number, 3 as holding_key, 'C4' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'B' as accession_number, 1 as holding_key, 'C9' as cusip, 1 as value_as_filed, 1 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+    expect:
+      rows:
+        - {check_name: "repeated_security_in_addition", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set", detail: "2 of its securities are already in effect from an earlier filing"}
+        - {check_name: "copied_holding_in_addition", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set", detail: "2 of its 3 holdings copy holdings already in effect; they are left out of canonical holdings"}
