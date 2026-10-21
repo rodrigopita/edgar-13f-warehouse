@@ -51,19 +51,5 @@ resource "snowflake_pipe" "parsed_filings" {
   }
 }
 
-# S3 tells the pipe about each new parsed file through the SQS queue Snowflake
-# created for it. S3 sends a test message when the configuration is saved and
-# rejects it if it cannot publish, so a clean apply proves the wiring. This
-# resource owns the bucket's whole notification configuration: any other
-# notification on this bucket has to be added here.
-resource "aws_s3_bucket_notification" "landing" {
-  bucket = aws_s3_bucket.landing.id
-
-  queue {
-    id            = "parsed-filings-to-snowpipe"
-    queue_arn     = snowflake_pipe.parsed_filings.notification_channel
-    events        = ["s3:ObjectCreated:*"]
-    filter_prefix = "parsed/edgar/filings/"
-    filter_suffix = ".jsonl"
-  }
-}
+# The bucket notification that feeds this pipe is in notifications.tf, beside
+# the entries for the audit pipes.
