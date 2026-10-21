@@ -14,6 +14,11 @@ the bucket notification hands to Snowpipe.
 The SEC data set zips land under raw/sec/datasets/ as fetched; their tables,
 re-compressed as gzip for COPY, go under extracted/sec/datasets/ with the row
 count each holds as object metadata.
+
+Audit records are the exception to deterministic keys: a record describes one
+attempt of a run, so its key carries the time it was recorded. A rerun adds a
+record beside the first instead of overwriting it, because Snowpipe skips a
+path it loaded in the last 14 days even when the file changed.
 """
 
 import json
@@ -61,9 +66,9 @@ def parsed_key(filed: date, accession: str) -> str:
     return f"{PARSED_PREFIX}/filed={filed.isoformat()}/{accession}.jsonl"
 
 
-def audit_key(day: date, run_id: str) -> str:
-    """One audit record per DAG run, under the day the run was for."""
-    return f"{AUDIT_PREFIX}/day={day.isoformat()}/{_safe(run_id)}.json"
+def audit_key(day: date, run_id: str, recorded_at: str) -> str:
+    """One audit record per attempt of a DAG run, under the day the run was for."""
+    return f"{AUDIT_PREFIX}/day={day.isoformat()}/{_safe(run_id)}/{_safe(recorded_at)}.json"
 
 
 def dataset_zip_key(name: str) -> str:
@@ -76,12 +81,12 @@ def extracted_key(table: str, dataset_id: str) -> str:
     return f"{EXTRACTED_PREFIX}/table={table}/{dataset_id}{EXTRACTED_SUFFIX}"
 
 
-def backfill_audit_key(run_id: str) -> str:
-    return f"{BACKFILL_AUDIT_PREFIX}/{_safe(run_id)}.json"
+def backfill_audit_key(run_id: str, recorded_at: str) -> str:
+    return f"{BACKFILL_AUDIT_PREFIX}/{_safe(run_id)}/{_safe(recorded_at)}.json"
 
 
-def _safe(run_id: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_.-]", "-", run_id)
+def _safe(text: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "-", text)
 
 
 @dataclass(frozen=True)
@@ -139,8 +144,8 @@ class LandingZone:
         )
 
     def land_audit(self, day: date, run_id: str, record: dict) -> Landed:
-        """Store one run's audit record as JSON. The pipeline writes its own audit."""
-        return self._put_json(audit_key(day, run_id), record, run_id)
+        """Store one attempt's audit record as JSON. The pipeline writes its own audit."""
+        return self._put_json(audit_key(day, run_id, record["recorded_at"]), record, run_id)
 
     def land_dataset_zip(self, name: str, data: bytes) -> Landed:
         """Store a data set zip as fetched from the SEC."""
@@ -152,8 +157,8 @@ class LandingZone:
         return self._put(extracted_key(table, dataset_id), data, "application/gzip", metadata)
 
     def land_backfill_audit(self, run_id: str, record: dict) -> Landed:
-        """Store one backfill run's audit record as JSON."""
-        return self._put_json(backfill_audit_key(run_id), record, run_id)
+        """Store one attempt's backfill audit record as JSON."""
+        return self._put_json(backfill_audit_key(run_id, record["recorded_at"]), record, run_id)
 
     def read(self, key: str) -> bytes:
         """Bytes of a landed object. Needs only s3:GetObject."""

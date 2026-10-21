@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import date
 
@@ -9,6 +10,7 @@ from include.edgar_filing import PRIMARY_DOC, FilingBytes, FilingDocuments
 from include.edgar_index import IndexEntry
 from include.landing import (
     LandingZone,
+    audit_key,
     backfill_audit_key,
     dataset_zip_key,
     extracted_key,
@@ -68,6 +70,18 @@ class TestKeys:
         key = parsed_key(date(2026, 9, 22), "0001535452-26-000006")
 
         assert key == "parsed/edgar/filings/filed=2026-09-22/0001535452-26-000006.jsonl"
+
+    def test_audit_key_is_one_file_per_attempt_under_the_day_and_run(self):
+        key = audit_key(
+            date(2026, 10, 20),
+            "scheduled__2026-10-21T06:00:00+00:00",
+            "2026-10-21T06:10:41.123456+00:00",
+        )
+
+        assert key == (
+            "raw/edgar/audit/walk/day=2026-10-20/scheduled__2026-10-21T06-00-00-00-00/"
+            "2026-10-21T06-10-41.123456-00-00.json"
+        )
 
 
 @pytest.fixture
@@ -195,6 +209,33 @@ class TestIdempotency:
         assert stored(s3, key)["body"] == b"second"
 
 
+class TestAudit:
+    # Snowpipe skips a path it loaded in the last 14 days even when the file
+    # changed, so a rerun of an audit task must write a new object, not
+    # overwrite the record the pipe already loaded.
+    def test_a_rerun_of_the_walk_audit_adds_a_record_and_keeps_the_first(self, zone, s3):
+        run_id = "scheduled__2026-10-21T06:00:00+00:00"
+        first = {"day": "2026-10-20", "recorded_at": "2026-10-21T06:10:41+00:00", "landed": 0}
+        second = {"day": "2026-10-20", "recorded_at": "2026-10-21T09:02:13+00:00", "landed": 321}
+
+        landed = [zone.land_audit(date(2026, 10, 20), run_id, r) for r in (first, second)]
+
+        assert landed[0].key != landed[1].key
+        assert stored(s3, landed[0].key)["body"] == json.dumps(first, sort_keys=True).encode()
+        assert stored(s3, landed[1].key)["body"] == json.dumps(second, sort_keys=True).encode()
+        assert stored(s3, landed[1].key)["meta"] == {"run-id": run_id}
+
+    def test_a_rerun_of_the_backfill_audit_adds_a_record_and_keeps_the_first(self, zone, s3):
+        run_id = "manual__2026-10-13T10:07:00+00:00"
+        first = {"recorded_at": "2026-10-13T13:10:10+00:00", "rows_loaded": {}}
+        second = {"recorded_at": "2026-10-17T23:10:50+00:00", "rows_loaded": {}}
+
+        keys = {zone.land_backfill_audit(run_id, r).key for r in (first, second)}
+
+        assert len(keys) == 2
+        assert len(s3.list_objects_v2(Bucket=BUCKET, Prefix="raw/sec/audit/")["Contents"]) == 2
+
+
 def test_exists_is_false_before_and_true_after_landing(zone):
     key = index_key(date(2026, 9, 22))
 
@@ -210,9 +251,11 @@ class TestDatasets:
             extracted_key("INFOTABLE", "2013q2")
             == "extracted/sec/datasets/table=INFOTABLE/2013q2.tsv.gz"
         )
-        assert (
-            backfill_audit_key("manual__2026-10-12T10:00:00+00:00")
-            == "raw/sec/audit/backfill/manual__2026-10-12T10-00-00-00-00.json"
+        assert backfill_audit_key(
+            "manual__2026-10-12T10:00:00+00:00", "2026-10-12T10:31:07.5+00:00"
+        ) == (
+            "raw/sec/audit/backfill/manual__2026-10-12T10-00-00-00-00/"
+            "2026-10-12T10-31-07.5-00-00.json"
         )
 
     def test_land_extracted_keeps_the_row_count_as_metadata(self, zone, s3):
