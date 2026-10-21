@@ -56,3 +56,28 @@ unit_tests:
       rows:
         - {check_name: "repeated_security_in_addition", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set", detail: "2 of its securities are already in effect from an earlier filing"}
         - {check_name: "copied_holding_in_addition", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set", detail: "2 of its 3 holdings copy holdings already in effect; they are left out of canonical holdings"}
+
+  - name: a_notice_that_lists_holdings_is_recorded_with_how_many
+    description: "A notice with two holdings in its table gets one row with the count; a notice without holdings gets none, and no other check fires on either."
+    model: data_quality_rows
+    given:
+      - input: ref('filings')
+        rows:
+          - {accession_number: "N", cik: "1", period_of_report: "2013-09-30", filing_date: "2013-11-14", submission_type: "13F-NT", is_amendment: false, cover_is_amendment: false, amendment_type: null, amendment_no: null, report_type: "13F NOTICE", report_calendar_or_quarter: "2013-09-30", table_entry_total: null, table_value_total_as_filed: null, origin: "data_set"}
+          - {accession_number: "M", cik: "2", period_of_report: "2013-09-30", filing_date: "2013-11-14", submission_type: "13F-NT", is_amendment: false, cover_is_amendment: false, amendment_type: null, amendment_no: null, report_type: "13F NOTICE", report_calendar_or_quarter: "2013-09-30", table_entry_total: null, table_value_total_as_filed: null, origin: "data_set"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "N", cik: "1", period_of_report: "2013-09-30", filing_position: 1, filing_role: "notice", effective_position: null, is_superseded: false, is_contributing: false}
+          - {accession_number: "M", cik: "2", period_of_report: "2013-09-30", filing_position: 1, filing_role: "notice", effective_position: null, is_superseded: false, is_contributing: false}
+      - input: ref('addition_coverage')
+        rows: []
+      - input: ref('filing_value_units')
+        rows: []
+      - input: ref('holdings')
+        format: sql
+        rows: |
+          select 'N' as accession_number, 1 as holding_key, 'C1' as cusip, 70983 as value_as_filed, 70983000 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+          union all select 'N' as accession_number, 2 as holding_key, 'C2' as cusip, 70983 as value_as_filed, 70983000 as value_usd, 100 as shares_or_principal_amount, 'SH' as shares_or_principal_amount_type, cast(null as varchar) as put_call, 'SOLE' as investment_discretion, array_construct() as other_manager_sequence_numbers
+    expect:
+      rows:
+        - {check_name: "notice_with_holdings", cik: "1", period_of_report: "2013-09-30", accession_number: "N", origin: "data_set", detail: "a notice that lists 2 holdings; they are left out of canonical holdings"}

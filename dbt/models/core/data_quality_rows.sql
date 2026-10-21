@@ -394,6 +394,24 @@ copied_holdings as (
     where filing_role = 'addition'
     group by cik, period_of_report, accession_number, origin
     having count(case when is_copied then 1 end) > 0
+),
+
+-- A notice says another manager reports the filer's holdings, so it
+-- carries none; the submission type decides, and the holdings a notice
+-- lists never count.
+notice_holdings as (
+    select
+        'notice_with_holdings' as check_name,
+        state.cik,
+        state.period_of_report,
+        state.accession_number,
+        state.origin,
+        'a notice that lists ' || totals.holdings_count
+            || ' holdings; they are left out of canonical holdings' as detail
+    from filing_state as state
+    inner join holding_totals as totals
+        on totals.accession_number = state.accession_number
+    where state.filing_role = 'notice'
 )
 
 select * from untyped_amendments
@@ -411,3 +429,4 @@ union all select * from restated_additions
 union all select * from copied_holdings
 union all select * from unit_overrides
 union all select * from off_yardstick
+union all select * from notice_holdings

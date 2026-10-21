@@ -1,7 +1,7 @@
 -- The data-set rows of each check against the count a separate Python pass
--- over the 54 zips found on 2026-10-16 and 2026-10-17, and for the two
--- addition checks on 2026-10-20, so the SQL and the profile check each
--- other. The data sets are fixed history until the next one is loaded,
+-- over the 54 zips found on 2026-10-16 and 2026-10-17, for the two
+-- addition checks on 2026-10-20 and for the notice check on 2026-10-21,
+-- so the SQL and the profile check each other. The data sets are fixed history until the next one is loaded,
 -- which moves these numbers on purpose. The walk lands amendments for old
 -- periods every day, and of these checks the superseded addition and the
 -- copied holding depend on a later filing of their lineage, so for those
@@ -25,6 +25,7 @@ with expected as (
     union all select 'addition_read_as_restatement', 1040
     union all select 'copied_holding_in_addition', 206
     union all select 'value_unit_overrides_filing_date_rule', 13499
+    union all select 'notice_with_holdings', 11
 ),
 
 walk_lineages as (
