@@ -172,6 +172,46 @@ models:
               arguments:
                   values: ["cover", "summary"]
 
+  - name: stg_audit_walk_runs
+    description: The walk's audit records, one row per record file, with what the attempt discovered, landed and parsed.
+    columns:
+      - name: run_id
+        tests: [not_null]
+      - name: walk_day
+        tests: [not_null]
+      - name: recorded_at
+        tests: [not_null]
+      - name: source_file
+        tests: [unique, not_null]
+
+  - name: stg_audit_walk_days
+    description: One row per walk audit record and day it walked, with the 13F filings the day's index listed by submission type.
+    columns:
+      - name: walk_day
+        tests: [not_null]
+      - name: discovered
+        tests: [not_null]
+
+  - name: stg_audit_walk_failures
+    description: One row per filing a walk audit record names as failed to land or to parse.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+      - name: failure_stage
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["land", "parse"]
+
+  - name: stg_audit_backfill_tables
+    description: One row per backfill audit record and data set table, with the rows extracted and the rows and files loaded.
+    columns:
+      - name: table_name
+        tests:
+          - accepted_values:
+              arguments:
+                  values: ["COVERPAGE", "INFOTABLE", "OTHERMANAGER", "OTHERMANAGER2", "SIGNATURE", "SUBMISSION", "SUMMARYPAGE"]
+
 unit_tests:
   # An expectation written as SQL is compared on every column of the model,
   # so the untested columns are listed as typed nulls, the value the model
@@ -229,3 +269,65 @@ unit_tests:
       rows:
         - {accession_number: "X", record_type: "cover", source_content_key: "new", filing_date: "2026-09-02"}
         - {accession_number: "Y", record_type: "cover", source_content_key: "only", filing_date: "2026-09-03"}
+
+  - name: one_row_per_audit_record_and_null_parse_counts_before_parsing
+    description: A record loaded by both the bulk COPY and the pipe counts once; a record written before the walk parsed has no parse counts.
+    model: stg_audit_walk_runs
+    given:
+      - input: source('audit', 'walk_runs')
+        format: sql
+        rows: |
+          select parse_json('{"run_id": "scheduled__2026-10-21T06:00:00+00:00", "day": "2026-10-20", "recorded_at": "2026-10-21T06:10:41.1+00:00", "published": true, "discovered": 321, "landed": 321, "already_present": 0, "failed": [], "parsed": 321, "parse_failed": [{"accession": "X"}], "reconcile_gaps": []}') as record,
+                 'day=2026-10-20/scheduled.json' as source_file, 'k1' as source_content_key, '2026-10-21 06:10:41'::timestamp_ntz as source_last_modified union all
+          select parse_json('{"run_id": "scheduled__2026-10-21T06:00:00+00:00", "day": "2026-10-20", "recorded_at": "2026-10-21T06:10:41.1+00:00", "published": true, "discovered": 321, "landed": 321, "already_present": 0, "failed": [], "parsed": 321, "parse_failed": [{"accession": "X"}], "reconcile_gaps": []}'),
+                 'day=2026-10-20/scheduled.json', 'k1', '2026-10-21 06:10:41'::timestamp_ntz union all
+          select parse_json('{"run_id": "scheduled__2026-09-02T06:00:00+00:00", "day": "2026-09-02", "recorded_at": "2026-10-04T15:47:28+00:00", "published": true, "discovered": 4, "landed": 4, "already_present": 0, "failed": []}'),
+                 'day=2026-09-02/scheduled.json', 'k2', '2026-10-04 15:47:28'::timestamp_ntz
+    expect:
+      rows:
+        - {run_id: "scheduled__2026-10-21T06:00:00+00:00", walk_day: "2026-10-20", discovered: 321, landing_failures: 0, parsed: 321, parse_failures: 1}
+        - {run_id: "scheduled__2026-09-02T06:00:00+00:00", walk_day: "2026-09-02", discovered: 4, landing_failures: 0, parsed: null, parse_failures: null}
+
+  - name: a_record_walks_its_own_day_and_the_days_it_swept
+    description: One record that walked 2026-09-22 and swept 2026-09-21 gives a row per day with the index's counts by submission type, a type the index did not list reading zero.
+    model: stg_audit_walk_days
+    given:
+      - input: source('audit', 'walk_runs')
+        format: sql
+        rows: |
+          select parse_json('{"run_id": "manual", "recorded_at": "2026-10-04T04:48:17+00:00", "days": {"2026-09-22": {"key": "raw/edgar/index/form.20260922.idx", "discovered": 5, "by_form": {"13F-HR": 3, "13F-HR/A": 1, "13F-NT": 1}}, "2026-09-21": {"key": "raw/edgar/index/form.20260921.idx", "discovered": 2, "by_form": {"13F-HR": 2}}}}') as record,
+                 'day=2026-09-22/manual.json' as source_file, 'k' as source_content_key, '2026-10-04 04:48:17'::timestamp_ntz as source_last_modified
+    expect:
+      rows:
+        - {walk_day: "2026-09-22", discovered: 5, holdings_reports: 3, holdings_report_amendments: 1, notices: 1, notice_amendments: 0, index_key: "raw/edgar/index/form.20260922.idx"}
+        - {walk_day: "2026-09-21", discovered: 2, holdings_reports: 2, holdings_report_amendments: 0, notices: 0, notice_amendments: 0, index_key: "raw/edgar/index/form.20260921.idx"}
+
+  - name: failures_to_land_and_to_parse_each_give_a_row
+    description: A record with one landing failure and one parse failure gives two rows; a record written before the walk parsed, with no parse_failed list, gives none.
+    model: stg_audit_walk_failures
+    given:
+      - input: source('audit', 'walk_runs')
+        format: sql
+        rows: |
+          select parse_json('{"run_id": "r", "day": "2026-10-16", "recorded_at": "2026-10-17T06:09:20+00:00", "failed": [{"accession": "L", "form_type": "13F-HR", "error": "HTTPError: 404"}], "parse_failed": [{"accession": "N", "form_type": "13F-NT", "error": "XmlRecordError: a notice has no summary page"}]}') as record,
+                 'day=2026-10-16/r.json' as source_file, 'k1' as source_content_key, '2026-10-17 06:09:20'::timestamp_ntz as source_last_modified union all
+          select parse_json('{"run_id": "old", "day": "2026-09-02", "recorded_at": "2026-10-04T15:47:28+00:00", "failed": []}'),
+                 'day=2026-09-02/old.json', 'k2', '2026-10-04 15:47:28'::timestamp_ntz
+    expect:
+      rows:
+        - {failure_stage: "land", accession_number: "L", submission_type: "13F-HR", error: "HTTPError: 404", walk_day: "2026-10-16"}
+        - {failure_stage: "parse", accession_number: "N", submission_type: "13F-NT", error: "XmlRecordError: a notice has no summary page", walk_day: "2026-10-16"}
+
+  - name: a_backfill_record_gives_a_row_per_table
+    description: Extracted rows, rows loaded and files loaded are read per table from the record's three maps.
+    model: stg_audit_backfill_tables
+    given:
+      - input: source('audit', 'backfill_runs')
+        format: sql
+        rows: |
+          select parse_json('{"run_id": "manual-r1", "recorded_at": "2026-10-13T12:52:39+00:00", "extracted_rows": {"SUBMISSION": 166, "INFOTABLE": 87715}, "rows_loaded": {"SUBMISSION": 166, "INFOTABLE": 0}, "files_loaded": {"SUBMISSION": 1, "INFOTABLE": 0}}') as record,
+                 'manual-r1.json' as source_file, 'k' as source_content_key, '2026-10-13 12:52:41'::timestamp_ntz as source_last_modified
+    expect:
+      rows:
+        - {table_name: "SUBMISSION", extracted_rows: 166, rows_loaded: 166, files_loaded: 1}
+        - {table_name: "INFOTABLE", extracted_rows: 87715, rows_loaded: 0, files_loaded: 0}

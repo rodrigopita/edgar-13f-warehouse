@@ -1,0 +1,22 @@
+version: 2
+
+unit_tests:
+  - name: each_failed_filing_once_with_its_latest_error_and_whether_it_loaded
+    description: "Notice N failed to parse on two attempts and has since loaded; report R failed to parse once and has not; filing L failed to land. The latest attempt's error and run stand."
+    model: walk_failures
+    given:
+      - input: ref('stg_audit_walk_failures')
+        rows:
+          - {accession_number: "N", failure_stage: "parse", submission_type: "13F-NT", error: "first", walk_day: "2026-10-16", run_id: "r1", recorded_at: "2026-10-17 06:09:00+00"}
+          - {accession_number: "N", failure_stage: "parse", submission_type: "13F-NT", error: "second", walk_day: "2026-10-16", run_id: "r2", recorded_at: "2026-10-18 06:09:00+00"}
+          - {accession_number: "R", failure_stage: "parse", submission_type: "13F-HR", error: "name", walk_day: "2026-10-19", run_id: "r3", recorded_at: "2026-10-20 06:08:00+00"}
+          - {accession_number: "L", failure_stage: "land", submission_type: "13F-HR", error: "404", walk_day: "2026-10-19", run_id: "r3", recorded_at: "2026-10-20 06:08:00+00"}
+      - input: ref('stg_xml_filing_records')
+        rows:
+          - {accession_number: "N", record_type: "cover", filing_date: "2026-10-16"}
+          - {accession_number: "X", record_type: "cover", filing_date: "2026-10-16"}
+    expect:
+      rows:
+        - {accession_number: "N", failure_stage: "parse", failed_attempts: 2, first_failed_at: "2026-10-17 06:09:00+00", last_failed_at: "2026-10-18 06:09:00+00", last_error: "second", last_run_id: "r2", is_loaded: true}
+        - {accession_number: "R", failure_stage: "parse", failed_attempts: 1, first_failed_at: "2026-10-20 06:08:00+00", last_failed_at: "2026-10-20 06:08:00+00", last_error: "name", last_run_id: "r3", is_loaded: false}
+        - {accession_number: "L", failure_stage: "land", failed_attempts: 1, first_failed_at: "2026-10-20 06:08:00+00", last_failed_at: "2026-10-20 06:08:00+00", last_error: "404", last_run_id: "r3", is_loaded: false}

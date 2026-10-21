@@ -155,3 +155,7 @@ _Avoid_: dataset, bulk file, TSV, quarter file
 **Walk**:
 One pass of the daily index that discovers, lands and parses the filings of one day. The source of every filing after the last data set.
 _Avoid_: crawl, scrape, incremental load
+
+**Audit record**:
+What one attempt of a walk or backfill run wrote about itself: what it discovered, landed, parsed or loaded, and what failed. Each attempt writes its own, so a rerun adds a record and the latest for a day stands.
+_Avoid_: log, run log, manifest, report

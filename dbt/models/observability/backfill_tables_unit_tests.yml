@@ -1,0 +1,31 @@
+version: 2
+
+unit_tests:
+  - name: loads_add_up_over_runs_and_meet_the_rows_in_raw
+    description: "Two backfill runs: the first extracted and loaded SUBMISSION's three rows, the second extracted them again and loaded none, as a COPY that skips loaded files does. Raw holds the three rows. The other tables are empty."
+    model: backfill_tables
+    given:
+      - input: ref('stg_audit_backfill_tables')
+        rows:
+          - {run_id: "first", recorded_at: "2026-10-13 12:52:39+00", table_name: "SUBMISSION", extracted_rows: 3, rows_loaded: 3, files_loaded: 2}
+          - {run_id: "second", recorded_at: "2026-10-17 23:10:50+00", table_name: "SUBMISSION", extracted_rows: 3, rows_loaded: 0, files_loaded: 0}
+      - input: source('raw', 'dataset_submission')
+        rows:
+          - {accession_number: "A"}
+          - {accession_number: "B"}
+          - {accession_number: "C"}
+      - input: source('raw', 'dataset_coverpage')
+        rows: []
+      - input: source('raw', 'dataset_othermanager')
+        rows: []
+      - input: source('raw', 'dataset_othermanager2')
+        rows: []
+      - input: source('raw', 'dataset_infotable')
+        rows: []
+      - input: source('raw', 'dataset_signature')
+        rows: []
+      - input: source('raw', 'dataset_summarypage')
+        rows: []
+    expect:
+      rows:
+        - {table_name: "SUBMISSION", extracted_rows: 3, rows_loaded: 3, files_loaded: 2, backfill_runs: 2, raw_rows: 3}

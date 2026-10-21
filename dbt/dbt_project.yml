@@ -10,9 +10,10 @@ test-paths: ["tests"]
 target-path: target
 clean-targets: [target, dbt_packages]
 
-# Staging and core build in CORE, the target schema; marts build in MARTS.
-# generate_schema_name in macros/ makes a custom schema name the schema
-# itself, so marts land in MARTS and not in CORE_MARTS.
+# Staging and core build in CORE, the target schema; marts build in MARTS,
+# and pipeline health in OBSERVABILITY. generate_schema_name in macros/
+# makes a custom schema name the schema itself, so marts land in MARTS and
+# not in CORE_MARTS.
 models:
   edgar_13f_warehouse:
     staging:
@@ -21,4 +22,7 @@ models:
       +materialized: table
     marts:
       +schema: marts
+      +materialized: table
+    observability:
+      +schema: observability
       +materialized: table

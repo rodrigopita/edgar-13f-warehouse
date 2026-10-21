@@ -1,0 +1,63 @@
+version: 2
+
+unit_tests:
+  - name: holdings_split_into_superseded_contributing_and_copied
+    description: "Lineage 1: a data-set original O of two holdings, superseded by a walk restatement R of one, so O is set aside by the walk. Lineage 2: a data-set original P and an addition Q of two holdings each, one of Q's copied. Lineage 3: a data-set original S superseded by a data-set restatement T, which the walk did not touch. Lineage 4: a data-set notice N that carries a holding, which neither supersedes nor contributes."
+    model: row_counts
+    given:
+      - input: source('raw', 'dataset_infotable')
+        rows:
+          - {accession_number: "O"}
+          - {accession_number: "O"}
+          - {accession_number: "P"}
+          - {accession_number: "P"}
+          - {accession_number: "Q"}
+          - {accession_number: "Q"}
+          - {accession_number: "S"}
+          - {accession_number: "T"}
+          - {accession_number: "N"}
+      - input: ref('stg_xml_filing_records')
+        rows:
+          - {accession_number: "R", record_type: "cover"}
+          - {accession_number: "R", record_type: "holding"}
+      - input: ref('holdings')
+        rows:
+          - {accession_number: "O", origin: "data_set"}
+          - {accession_number: "O", origin: "data_set"}
+          - {accession_number: "R", origin: "walk"}
+          - {accession_number: "P", origin: "data_set"}
+          - {accession_number: "P", origin: "data_set"}
+          - {accession_number: "Q", origin: "data_set"}
+          - {accession_number: "Q", origin: "data_set"}
+          - {accession_number: "S", origin: "data_set"}
+          - {accession_number: "T", origin: "data_set"}
+          - {accession_number: "N", origin: "data_set"}
+      - input: ref('filings')
+        rows:
+          - {accession_number: "O", origin: "data_set"}
+          - {accession_number: "R", origin: "walk"}
+          - {accession_number: "P", origin: "data_set"}
+          - {accession_number: "Q", origin: "data_set"}
+          - {accession_number: "S", origin: "data_set"}
+          - {accession_number: "T", origin: "data_set"}
+          - {accession_number: "N", origin: "data_set"}
+      - input: ref('lineage_filings')
+        rows:
+          - {accession_number: "O", cik: "1", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", effective_position: 2, is_superseded: true, is_contributing: false}
+          - {accession_number: "R", cik: "1", period_of_report: "2024-03-31", filing_position: 2, filing_role: "restatement", effective_position: 2, is_superseded: false, is_contributing: true}
+          - {accession_number: "P", cik: "2", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", effective_position: 1, is_superseded: false, is_contributing: true}
+          - {accession_number: "Q", cik: "2", period_of_report: "2024-03-31", filing_position: 2, filing_role: "addition", effective_position: 1, is_superseded: false, is_contributing: true}
+          - {accession_number: "S", cik: "3", period_of_report: "2024-03-31", filing_position: 1, filing_role: "original", effective_position: 2, is_superseded: true, is_contributing: false}
+          - {accession_number: "T", cik: "3", period_of_report: "2024-03-31", filing_position: 2, filing_role: "restatement", effective_position: 2, is_superseded: false, is_contributing: true}
+          - {accession_number: "N", cik: "4", period_of_report: "2024-03-31", filing_position: 1, filing_role: "notice", effective_position: null, is_superseded: false, is_contributing: false}
+      - input: ref('canonical_holdings')
+        rows:
+          - {accession_number: "R", origin: "walk"}
+          - {accession_number: "P", origin: "data_set"}
+          - {accession_number: "P", origin: "data_set"}
+          - {accession_number: "Q", origin: "data_set"}
+          - {accession_number: "T", origin: "data_set"}
+    expect:
+      rows:
+        - {origin: "data_set", raw_rows: 9, holdings: 9, superseded_holdings: 3, contributing_holdings: 5, notice_holdings: 1, canonical_holdings: 4, copied_holdings: 1, unresolved_holdings: 0, set_aside_by_walk: 2, filings: 6, superseded_filings: 2}
+        - {origin: "walk", raw_rows: 1, holdings: 1, superseded_holdings: 0, contributing_holdings: 1, notice_holdings: 0, canonical_holdings: 1, copied_holdings: 0, unresolved_holdings: 0, set_aside_by_walk: 0, filings: 1, superseded_filings: 0}

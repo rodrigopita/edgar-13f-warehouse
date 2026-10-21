@@ -18,6 +18,14 @@ sources:
           accession, source_key and the parsed record. A file loads whole or
           not at all, so a filing's cover page and holdings share a
           source_file.
+        # Freshness from the table's last load in Snowflake's metadata, so
+        # no loaded_at_field. Filings arrive only on days EDGAR publishes an
+        # index: a weekend leaves 96 hours between loads and a long weekend
+        # 120, so each limit is that and four hours more.
+        config:
+          freshness:
+            warn_after: {count: 100, period: hour}
+            error_after: {count: 124, period: hour}
       - name: dataset_submission
         description: SUBMISSION.tsv, one row per filing in the data sets.
       - name: dataset_coverpage
@@ -32,3 +40,29 @@ sources:
         description: SIGNATURE.tsv, the signature block of a filing.
       - name: dataset_summarypage
         description: SUMMARYPAGE.tsv, the totals a holdings report declares.
+
+  - name: audit
+    description: >
+      The pipeline's records of itself, in EDGAR_13F.AUDIT: one row per
+      audit record the walk and the backfill wrote to S3, loaded by a pipe
+      per prefix, and the records written before the pipes by one bulk COPY.
+      Every table ends with the source columns naming the file a row came
+      from.
+    database: edgar_13f
+    schema: audit
+    tables:
+      - name: walk_runs
+        description: >
+          One row per walk audit record: the days the attempt walked, the
+          filings each day's index listed, and what it landed, parsed and
+          failed to.
+        # The walk runs at 06:00 UTC every day and writes a record even for
+        # a day with no index, so a record 30 hours old means a run missed.
+        config:
+          freshness:
+            warn_after: {count: 30, period: hour}
+            error_after: {count: 54, period: hour}
+      - name: backfill_runs
+        description: >
+          One row per backfill audit record: the rows extracted from the
+          zips and the rows and files its COPY loaded, per table.

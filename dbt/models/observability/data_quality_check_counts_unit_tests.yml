@@ -1,0 +1,19 @@
+version: 2
+
+unit_tests:
+  - name: filings_and_lineages_per_check_and_path
+    description: "untyped_amendment flags two filings of one lineage and one of another on the data-set path, and one walk filing; second_original flags one."
+    model: data_quality_check_counts
+    given:
+      - input: ref('data_quality_rows')
+        rows:
+          - {check_name: "untyped_amendment", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set"}
+          - {check_name: "untyped_amendment", cik: "1", period_of_report: "2024-03-31", accession_number: "B", origin: "data_set"}
+          - {check_name: "untyped_amendment", cik: "2", period_of_report: "2024-03-31", accession_number: "C", origin: "data_set"}
+          - {check_name: "untyped_amendment", cik: "3", period_of_report: "2026-06-30", accession_number: "D", origin: "walk"}
+          - {check_name: "second_original", cik: "1", period_of_report: "2024-03-31", accession_number: "A", origin: "data_set"}
+    expect:
+      rows:
+        - {check_name: "untyped_amendment", origin: "data_set", filings: 3, lineages: 2}
+        - {check_name: "untyped_amendment", origin: "walk", filings: 1, lineages: 1}
+        - {check_name: "second_original", origin: "data_set", filings: 1, lineages: 1}

@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: walk_days
+    description: Filings discovered against filings loaded, one row per day the walk covered, from the latest audit record covering the day and the walk's filings in RAW with that filing date.
+    columns:
+      - name: walk_day
+        tests: [unique, not_null]
+      - name: loaded
+        description: The walk's filings in RAW with this filing date, one file version each.
+      - name: not_loaded
+        description: Filings the day's index listed less those loaded; a filing posted to a later day's index counts on its own filing date.
+      - name: audit_records
+        description: The audit records that cover the day, its first run with any rerun and later sweep.
+
+  - name: walk_failures
+    description: One row per filing and stage the walk failed at, land or parse, with the attempts that failed, the latest error and whether the filing has since reached RAW.
+    columns:
+      - name: accession_number
+        tests: [not_null]
+      - name: failure_stage
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["land", "parse"]
+      - name: is_loaded
+        description: True when the filing's JSON lines are in RAW, from a later run of its day.
+
+  - name: row_counts
+    description: Raw-to-modeled row counts, one row per path, from raw holding rows to holdings, superseded, contributing, copied and canonical holdings.
+    columns:
+      - name: origin
+        tests:
+          - unique
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["data_set", "walk"]
+      - name: copied_holdings
+        description: Holdings of contributing filings that canonical holdings leave out as copies.
+      - name: unresolved_holdings
+        description: Holdings in a filing neither superseded nor contributing; row_counts_balance expects none.
+      - name: set_aside_by_walk
+        description: Data-set holdings that would contribute among their lineage's data-set filings alone and are superseded by a walk filing.
+
+  - name: backfill_tables
+    description: One row per data set table, the rows the backfill extracted, the rows its COPY loaded over every run and the rows in RAW now.
+    columns:
+      - name: table_name
+        tests: [unique, not_null]
+
+  - name: data_quality_check_counts
+    description: One row per data-quality check and path, the filings and lineages it flags.
+    columns:
+      - name: check_name
+        tests: [not_null]
+
+  - name: pipeline_freshness
+    description: One row, read when queried, with the latest point of each layer, audit records, RAW and CORE, so a stalled pipe and an unrun dbt build tell apart.
