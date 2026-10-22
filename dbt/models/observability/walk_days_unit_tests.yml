@@ -2,7 +2,7 @@ version: 2
 
 unit_tests:
   - name: latest_record_of_a_day_counts_against_filings_loaded_that_date
-    description: "Day 2026-10-16 is covered by a first attempt and a rerun, and the rerun's count stands; its filings load under that filing date, a filing's cover and holdings counting once. Day 2026-10-19 has one record and nothing loaded. A filing dated 2026-10-14, a day no record covers, counts nowhere."
+    description: "Day 2026-10-16 is covered by a first attempt and a rerun, and the rerun's count stands against the walk's filings of that date. Day 2026-10-19 has one record and nothing loaded. Day 2026-08-31, the overlap with the last data set, is loaded from the data sets. A filing dated 2026-10-14, a day no record covers, counts nowhere."
     model: walk_days
     given:
       - input: ref('stg_audit_walk_days')
@@ -10,14 +10,17 @@ unit_tests:
           - {walk_day: "2026-10-16", discovered: 5, holdings_reports: 4, holdings_report_amendments: 0, notices: 1, notice_amendments: 0, run_id: "scheduled__2026-10-17", recorded_at: "2026-10-17 06:09:00+00", source_file: "a"}
           - {walk_day: "2026-10-16", discovered: 6, holdings_reports: 4, holdings_report_amendments: 1, notices: 1, notice_amendments: 0, run_id: "scheduled__2026-10-17", recorded_at: "2026-10-21 14:00:00+00", source_file: "b"}
           - {walk_day: "2026-10-19", discovered: 3, holdings_reports: 3, holdings_report_amendments: 0, notices: 0, notice_amendments: 0, run_id: "scheduled__2026-10-20", recorded_at: "2026-10-20 06:08:00+00", source_file: "c"}
-      - input: ref('stg_xml_filing_records')
+          - {walk_day: "2026-08-31", discovered: 2, holdings_reports: 2, holdings_report_amendments: 0, notices: 0, notice_amendments: 0, run_id: "scheduled__2026-09-01", recorded_at: "2026-10-11 19:08:37+00", source_file: "d"}
+      - input: ref('filings')
         rows:
-          - {accession_number: "A", record_type: "cover", filing_date: "2026-10-16"}
-          - {accession_number: "A", record_type: "holding", filing_date: "2026-10-16"}
-          - {accession_number: "A", record_type: "holding", filing_date: "2026-10-16"}
-          - {accession_number: "B", record_type: "cover", filing_date: "2026-10-16"}
-          - {accession_number: "C", record_type: "cover", filing_date: "2026-10-14"}
+          - {accession_number: "A", filing_date: "2026-10-16", origin: "walk"}
+          - {accession_number: "B", filing_date: "2026-10-16", origin: "walk"}
+          - {accession_number: "C", filing_date: "2026-10-14", origin: "walk"}
+          - {accession_number: "D1", filing_date: "2026-08-31", origin: "data_set"}
+          - {accession_number: "D2", filing_date: "2026-08-31", origin: "data_set"}
+          - {accession_number: "E", filing_date: "2026-08-28", origin: "data_set"}
     expect:
       rows:
-        - {walk_day: "2026-10-16", discovered: 6, holdings_report_amendments: 1, loaded: 2, not_loaded: 4, audit_records: 2, recorded_at: "2026-10-21 14:00:00+00"}
-        - {walk_day: "2026-10-19", discovered: 3, holdings_report_amendments: 0, loaded: 0, not_loaded: 3, audit_records: 1, recorded_at: "2026-10-20 06:08:00+00"}
+        - {walk_day: "2026-10-16", discovered: 6, holdings_report_amendments: 1, loaded: 2, loaded_from_data_sets: 0, not_loaded: 4, audit_records: 2, recorded_at: "2026-10-21 14:00:00+00"}
+        - {walk_day: "2026-10-19", discovered: 3, holdings_report_amendments: 0, loaded: 0, loaded_from_data_sets: 0, not_loaded: 3, audit_records: 1, recorded_at: "2026-10-20 06:08:00+00"}
+        - {walk_day: "2026-08-31", discovered: 2, holdings_report_amendments: 0, loaded: 2, loaded_from_data_sets: 2, not_loaded: 0, audit_records: 1, recorded_at: "2026-10-11 19:08:37+00"}

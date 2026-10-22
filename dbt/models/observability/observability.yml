@@ -2,12 +2,14 @@ version: 2
 
 models:
   - name: walk_days
-    description: Filings discovered against filings loaded, one row per day the walk covered, from the latest audit record covering the day and the walk's filings in RAW with that filing date.
+    description: Filings discovered against filings loaded, one row per day the walk covered, from the latest audit record covering the day and the filings in CORE with that filing date.
     columns:
       - name: walk_day
         tests: [unique, not_null]
       - name: loaded
-        description: The walk's filings in RAW with this filing date, one file version each.
+        description: The filings in CORE with this filing date, from either path.
+      - name: loaded_from_data_sets
+        description: Those of them loaded from the data sets, which only the overlap day, 2026-08-31, has.
       - name: not_loaded
         description: Filings the day's index listed less those loaded; a filing posted to a later day's index counts on its own filing date.
       - name: audit_records
