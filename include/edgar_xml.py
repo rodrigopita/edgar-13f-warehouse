@@ -116,7 +116,8 @@ class Holding(Strict):
     """One infoTable row. row_index is 1-based, for lineage back to the raw file."""
 
     row_index: int = Field(ge=1)
-    name_of_issuer: str
+    # Blank on placeholder rows such as CUSIP 000000000; the data sets read it as null.
+    name_of_issuer: str | None
     title_of_class: str
     cusip: str = Field(pattern=_CUSIP.pattern)
     figi: str | None = Field(default=None, pattern=_FIGI.pattern)

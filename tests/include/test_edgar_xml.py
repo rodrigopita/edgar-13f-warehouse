@@ -319,6 +319,17 @@ class TestBuiltTables:
         assert rows[1].shares_or_principal_type == "PRN"
         assert rows[1].figi == "BBG000BLNNH6" and rows[1].other_managers == [1, 3]
 
+    def test_a_blank_issuer_name_is_read_as_none(self):
+        # 0001643792-26-000012 lists one placeholder holding: a blank issuer
+        # name, CUSIP 000000000, value 0. Data-set staging reads a blank as
+        # null and keeps such a row, so the XML path keeps it too.
+        rows = parse_information_table(
+            built_table(built_row(issuer=" ", value="0", shares="0")), "0001643792-26-000012"
+        )
+
+        assert len(rows) == 1
+        assert rows[0].name_of_issuer is None and rows[0].cusip == "000000000"
+
     def test_a_bad_row_names_its_index_and_field(self):
         data = built_table(built_row(), built_row(value="12.5"), built_row())
 
