@@ -21,7 +21,7 @@ This is the flagship project because it combines a realistic domain, semi-struct
 | Ingestion               | Snowpipe auto-ingest                           |
 | Warehouse               | Snowflake                                      |
 | Semi-structured storage | VARIANT                                        |
-| Incremental processing  | Streams & Tasks                                |
+| Incremental processing  | Full dbt rebuilds, revised 2026-10-23          |
 | Transformation          | dbt Core                                       |
 | CI                      | GitHub Actions                                 |
 
@@ -35,8 +35,8 @@ flowchart TD
     D --> E[Snowpipe]
     E --> F[Raw Snowflake]
     B --> F
-    F --> G[Streams / Tasks]
-    G --> H[dbt Core]
+    %% Revised 2026-10-23: no Streams / Tasks; dbt rebuilds from raw.
+    F --> H[dbt Core]
     H --> I[Core + Analytical Marts]
 ```
 
@@ -135,8 +135,8 @@ Use platform features because they solve a problem:
 
 - **VARIANT** for raw semi-structured records
 - **Snowpipe** for incremental ingestion
-- **Streams & Tasks** for incremental state changes
-- **dbt incremental models/snapshots** where appropriate
+- **Streams & Tasks** for incremental state changes. Revised 2026-10-23: not used; see the Decisions bullet of that date.
+- **dbt incremental models/snapshots** where appropriate. Revised 2026-10-23: none was; same bullet.
 - **Time Travel** for recovery/debugging
 - **Zero-copy cloning** for a development environment
 - **RBAC** to separate ingestion/transformation/analytics responsibilities
@@ -206,6 +206,7 @@ Settled 2026-09-23 at the start of cp1. Each carries a reason and a fact that ca
 - **Four functional roles separate the work: LOADER adds rows to `RAW`, TRANSFORMER reads `RAW` and `AUDIT` and builds `CORE`, `MARTS` and `OBSERVABILITY`, TERRAFORM owns the stages and pipes, and ANALYST reads `MARTS` alone.** Each role holds what its work needs and no more, so a leaked key or a careless query reaches only that work: ANALYST, created by `11_analyst_role.sql`, sees the question-shaped tables and not the loaded record, the typed core or the pipeline's own records. LOADER lost its `INSERT` on `AUDIT` to `10_narrow_loader_grants.sql`, since the audit records arrive by pipe. A future grant on `MARTS` keeps ANALYST reading the marts dbt replaces on every build: `filer_overlaps`, rebuilt after `11`, carried ANALYST's `SELECT` 31 milliseconds after it was created. On 2026-10-23 a probe of each role with secondary roles off had ANALYST read two marts and refused `CORE`, `RAW`, `AUDIT`, `OBSERVABILITY`, an insert and a create table, TRANSFORMER refused writing `RAW` and `AUDIT`, LOADER refused everything but `RAW`, and TERRAFORM refused `CORE`; `docs/2026-10-23-cp5-rbac-proof.md` holds the probes and their outcomes. Rejected: dbt's `grants` config, which would put the analysts' access in the project of the role it is meant to fence off, against the 2026-09-23 decision to keep roles in numbered SQL. Decided 2026-10-23.
 - **Development runs in `EDGAR_13F_DEV`, a zero-copy clone of `EDGAR_13F` that `12_dev_clone.sql` remakes on demand, and dbt's default target builds there; production takes `--target prod`.** A clone shares its source's storage until a table changes, so the whole warehouse, 115,995,390 canonical holdings on 2026-10-23, is there after one statement, and a model can be changed and rebuilt against it without reading or writing production; `sources.yml` reads the target's database for that reason. The script drops the cloned pipes, which start stopped but would load production a second time if resumed, since each COPY names its table in full, and grants TRANSFORMER the USAGE on the database that a clone does not inherit; the tables keep their owners. dbt writes every reference with its database, so the cloned views read production until `dbt run --target dev --select config.materialized:view` rebuilds them, 16 in 10 seconds. On 2026-10-23 the clone's `filer_overlaps`, rebuilt for the ten largest filers of each period, held 3,590 pairs while production's kept 292,328, and the canonical holdings, two other marts and `RAW.PARSED_FILINGS` counted the same in both; `docs/2026-10-23-cp5-dev-clone.md` holds the run. Rejected: a development schema inside `EDGAR_13F`, dbt's usual pattern, where a model can be tried only by rebuilding the core it reads or by reading production's. Decided 2026-10-23.
 - **A bad build is undone from Time Travel within the day Standard edition keeps, and rebuilt by dbt after it.** dbt builds every table with `CREATE OR REPLACE`, which keeps the replaced table in Time Travel and gives the name a new object, so `AT` and `BEFORE` on the name cannot reach the old rows; renaming the bad table and running `UNDROP` brings the old one back. On 2026-10-23 a development build replaced the clone's `filer_overlaps` with a version for the ten largest filers, 3,590 pairs, and twelve minutes later a rename and an `UNDROP` restored the table the clone had made, 292,328 pairs and row for row production's; `docs/2026-10-23-cp5-time-travel-recovery.md` holds the run, the second part of the failure demo. The marts stay transient, dbt's default, with no Fail-safe after the day, because every table in `CORE` and `MARTS` rebuilds from `RAW`, the marts in about four and a half minutes, and `RAW` from the landing bucket. Rejected: permanent marts, `+transient: false`, which buy seven days of Fail-safe that only Snowflake can restore from, for tables that rebuild in minutes. Decided 2026-10-23.
+- **Every model rebuilds in full from `RAW` on each dbt run; no stream, task, incremental model or snapshot is used.** A full build of the 19 tables, 16 views and 233 tests took 11 to 12 minutes on the X-Small on 2026-10-22, about a fifth of a credit at one credit an hour, while the walk added 533,943 holdings in its first 35 days beside the 124 million from the data sets. What a day brings is not only new rows: a restatement for an old period supersedes filings and takes their holdings out, as the walk filings loaded between the builds of 2026-10-20 and 2026-10-21 took 120 more data-set holdings out of canonical holdings; the price check compares a filing with every filer of its security and period; and position changes and overlaps compare whole periods. An incremental model would recompute whole lineages and periods by a second set of rules beside the full one, for a saving of minutes a day. A stream also needs a table whose history survives, and `CREATE OR REPLACE` ends it on every table dbt builds, so only the raw tables could carry one. What would change at an hourly cadence or a far larger history: an incremental `canonical_holdings` keyed by lineage, deleting and inserting the lineages a run's filings touch, with the full build kept as its check. Decided 2026-10-23.
 
 ## Source facts
 
