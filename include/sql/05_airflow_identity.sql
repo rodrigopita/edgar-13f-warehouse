@@ -4,9 +4,9 @@
 -- nothing); ADD KEY PAIR is not, it fails on an existing name, and a new key
 -- goes in with ROTATE KEY PAIR.
 --
--- Airflow runs the backfill COPY and the audit inserts as AIRFLOW_SVC, a
--- SERVICE user in LOADER, with its own key pair: Terraform's key cannot load
--- data and this one cannot create objects, so each can be revoked alone.
+-- Airflow runs the backfill COPY as AIRFLOW_SVC, a SERVICE user in LOADER,
+-- with its own key pair: Terraform's key cannot load data and this one
+-- cannot create objects, so each can be revoked alone.
 
 use role securityadmin;
 
@@ -16,7 +16,7 @@ create user if not exists airflow_svc
     type = service
     default_role = loader
     default_warehouse = edgar_wh
-    comment = 'Airflow on the laptop: backfill COPY and pipeline audit rows, key-pair login only';
+    comment = 'Airflow on the laptop: backfill COPY, key-pair login only';
 grant role loader to user airflow_svc;
 
 -- 2. The public key, as a named key pair restricted to LOADER. DAYS_TO_EXPIRY

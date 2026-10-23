@@ -20,17 +20,16 @@ create schema if not exists edgar_13f.audit
 
 use role securityadmin;
 
--- 2. The ingestion role. The backfill COPY and the pipeline's audit rows run
---    under it: it adds rows to RAW and AUDIT and reads them back, nothing more.
+-- 2. The ingestion role. The backfill COPY runs under it: it adds rows to
+--    RAW and reads them back, nothing more. The pipeline's audit records
+--    reach AUDIT through pipes Terraform owns (08), not through this role.
 create role if not exists loader
-    comment = 'Loads RAW and AUDIT: backfill COPY and pipeline audit rows';
+    comment = 'Loads RAW: the backfill COPY';
 grant role loader to role sysadmin;
 grant usage on warehouse edgar_wh to role loader;
 grant usage on database edgar_13f to role loader;
 grant usage on schema edgar_13f.raw to role loader;
-grant usage on schema edgar_13f.audit to role loader;
 grant select, insert on future tables in schema edgar_13f.raw to role loader;
-grant select, insert on future tables in schema edgar_13f.audit to role loader;
 
 -- 3. Terraform creates the stages and the pipe in RAW and owns them; their
 --    file formats are inline. Snowpipe loads with the privileges of the

@@ -5,10 +5,10 @@
 -- fails on an existing name, and a new key goes in with ROTATE KEY PAIR.
 --
 -- dbt runs as DBT_SVC, a SERVICE user in TRANSFORMER, with the third key
--- pair: Terraform's key cannot read data, Airflow's cannot create objects
--- outside RAW and AUDIT, and this one cannot load or write back to either,
--- so each can be revoked alone. From this script on, the future grants in
--- RAW list TRANSFORMER's SELECT beside LOADER's.
+-- pair: Terraform's key cannot read data, Airflow's can only add rows to
+-- RAW, and this one cannot load or write back to RAW or AUDIT, so each can
+-- be revoked alone. From this script on, the future grants in RAW list
+-- TRANSFORMER's SELECT beside LOADER's.
 
 -- 1. Structure. SYSADMIN owns CORE and MARTS as it owns RAW and AUDIT, so
 --    dbt can create and replace what lives inside them and cannot drop the
