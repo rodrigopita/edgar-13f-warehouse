@@ -1,8 +1,10 @@
 """Command line for the SEC 13F data sets: list, download, profile, reconcile-sql.
 
-Run from the repo root with the contact address in the environment:
-`uv run --env-file .env python -m include.sec_cli <command>`. reconcile-sql reads
-only data/profile/ and needs neither the environment nor the network.
+Run from the repo root with only the contact address in the environment:
+`AIRFLOW_VAR_EDGAR_CONTACT=<address> uv run python -m include.sec_cli <command>`.
+Not `uv run --env-file .env`: uv cannot parse the Snowflake connection line in
+.env and prints it, key and passphrase included. reconcile-sql reads only
+data/profile/ and needs neither the environment nor the network.
 """
 
 import argparse
@@ -25,7 +27,8 @@ def client_from_env() -> EdgarClient:
     contact = os.environ.get("AIRFLOW_VAR_EDGAR_CONTACT")
     if not contact:
         sys.exit(
-            "set AIRFLOW_VAR_EDGAR_CONTACT (see .env.example); run with uv run --env-file .env"
+            "set AIRFLOW_VAR_EDGAR_CONTACT to the contact address (see .env.example), "
+            "not the whole .env"
         )
     return EdgarClient(contact)
 
