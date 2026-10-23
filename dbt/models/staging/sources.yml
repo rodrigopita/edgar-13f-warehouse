@@ -9,7 +9,7 @@ sources:
       daily walk parses from EDGAR XML, one JSON line per row. Every table
       ends with the same four source columns naming the file and line a row
       came from.
-    database: edgar_13f
+    database: "{{ target.database }}"
     schema: raw
     tables:
       - name: parsed_filings
@@ -48,7 +48,7 @@ sources:
       per prefix, and the records written before the pipes by one bulk COPY.
       Every table ends with the source columns naming the file a row came
       from.
-    database: edgar_13f
+    database: "{{ target.database }}"
     schema: audit
     tables:
       - name: walk_runs
