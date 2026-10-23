@@ -165,3 +165,47 @@ Each failure below has happened, was forced on purpose, or has a named step agai
 - **Warnings reach a person instead of waiting to be read.** `dbt source freshness`, `walk_days` and `walk_failures` are read by hand today. Production sends their warnings to an alert channel, and keeps Snowpipe's load history past the 14 days `INFORMATION_SCHEMA` holds it. `ACCOUNT_USAGE.COPY_HISTORY` keeps a year, read through the `SNOWFLAKE.USAGE_VIEWER` database role.
 - **Analysts get a warehouse and a monitor of their own.** ANALYST uses `EDGAR_WH` with the builds today. A warehouse sized for queries, under its own monitor, keeps a heavy query from slowing a build or spending its credits.
 - **Enterprise edition, for more than a day of Time Travel on the record.** Standard keeps one day, so a recovery has to come within a day of the mistake; the one recorded here came twelve minutes after it. Enterprise allows up to 90 days on permanent tables, which matters for `RAW` and `AUDIT` more than for the marts, which rebuild in minutes.
+
+## 8. What alternatives were considered and rejected?
+
+### Sources and discovery
+
+- **Rejected: a parser for the historical XML.** The SEC's data sets are its own flattening of the same filings, so history from them needs no parser and no archaeology; the XML path exists for what came after them, and it reconciles with the data sets on the day they overlap.
+- **Rejected: EDGAR's current-filings Atom feed for discovery.** The daily index keeps every day under `Archives/edgar/daily-index/`, so a day the walk missed is walked later by its date; a feed of current filings shows what is current when it is read.
+- **Rejected: the per-filer submissions API for discovery.** It answers per CIK, so a daily sweep would need the list of filers first and a request for each: 16,591 filers in the data sets, more than two hours a day at the walk's measured 2 requests a second, against one index file a day.
+
+### Orchestration and loading
+
+- **Rejected: GitHub Actions on a cron for the walk.** It would walk while the laptop is closed, and it would lose Airflow's run-level record: a run per day, its tasks, their retries and logs. GitHub Actions stays for CI.
+- **Rejected: loading the XML into VARIANT and parsing it with Snowflake's XML functions.** That moves the filer-chosen namespaces and the validation into SQL, after the load.
+- **Rejected: Airflow inserting the audit rows into Snowflake.** `05` first planned it, but it ties every walk to a Snowflake connection; written to S3 and loaded by a pipe, the audit goes on after the trial ends.
+- **Rejected: Streams and Tasks, and dbt incremental models.** A full build takes 11 to 12 minutes and a fifth of a credit, the day's change is not only new rows, and `CREATE OR REPLACE` ends the history a stream would need on every table dbt builds.
+
+### Account and access
+
+- **Rejected: the São Paulo account the trial signup made.** It was Enterprise at $4.65 a credit, against Standard at $2.00 in N. Virginia beside the bucket, which made about 200 credits of the balance instead of 86. Loading across regions would have worked; the price and a warehouse beside its data decided it.
+- **Rejected: Terraform for roles, grants and service users.** Provider 2.21.0 has no resource for a key pair restricted to one role, which every service user here has; Terraform's own identity cannot be created by Terraform; and managing roles would need an administrator's key on the laptop beside the plumbing key.
+- **Rejected: dbt's `grants` config for the analysts' access.** It would put ANALYST's access in the project of the role it fences off; a future grant in numbered SQL keeps it with the other roles, and it reached a replaced mart 31 milliseconds after dbt created it.
+- **Rejected: a development schema inside `EDGAR_13F`, dbt's usual pattern.** A model could then be tried only by rebuilding the core it reads or by reading production's; the clone holds the whole warehouse in one statement.
+- **Rejected: permanent marts for their Fail-safe.** Seven days that only Snowflake can restore from buy little for tables that rebuild from `CORE` in minutes.
+
+### Modeling rules
+
+- **Rejected: reading the cover's amendment type before the submission type.** It changes the contributing filings of none of the 307,613 holdings-report lineages, so the rule follows EDGAR's record and keeps the cover as evidence.
+- **Rejected: merging an addition's repeated security into one holding.** It would invent a value the filer never reported; an identical copy leaves, and a holding that repeats a security at another amount stays, as 7 of Janus Henderson's do.
+- **Rejected: the filing-date rule alone for value units.** The SEC moved values to dollars on 2023-01-03, but the rule misreads 13,499 of about 318,000 holdings filings, so each filing's median value per share decides.
+- **Rejected: the most frequent FIGI of each CUSIP.** It names a security by an identifier its filers disagree on: 9,879 of the 24,067 CUSIPs with a FIGI carry several.
+- **Rejected: every pair of filers in the overlap mart.** Some 40 million pairs in a recent period against 4,950 for the hundred largest.
+- **Rejected: dropping flagged filings from the marts.** A share, a weight or an overlap is a ratio within one filer's period, which a unit error across a filing leaves unchanged, so the marts carry the flag and keep the row.
+
+### Names
+
+- **Rejected: `sec-edgar-13f-warehouse`, `sec-13f-warehouse` and `institutional-holdings-warehouse`.** The first says SEC twice, the second drops the specific name, and the third describes the question and hides the source.
+
+## Deferred
+
+- **An as-known-on-date view.** The canonical state answers the questions asked; a view of what was known on a past date was set aside on 2026-10-20.
+- **Independent counts for three checks.** The zip pass counts thirteen of the sixteen data-quality checks; the summary, repeated-security and price checks have none yet.
+- **A check of each filing's value total against its lineage's.** It would have caught Janney Capital Management's two filings for 2015-06-30, off by about a thousand, while they still contributed.
+- **FIGI enrichment through OpenFIGI.** FIGI is an open identifier, so enrichment there respects the rule against scraping a CUSIP-to-ticker mapping; it waits until the core is done.
+- **A wave day.** The trial ends before the mid-November wave, so the walk has run at up to 344 filings a day, not about 2,600.
